@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function si() { return request.auth != null && request.auth.token.email_verified == true; }
+    function em() { return request.auth.token.email.lower(); }
+    function staff() { return si() && exists(/databases/$(db)/documents/staff/$(em())); }
+    function admin() { return staff() && get(/databases/$(db)/documents/staff/$(em())).data.role == 'admin'; }
+    function course(c) { return get(/databases/$(db)/documents/courses/$(c)); }
+    function activeEnr(c) {
+      return exists(/databases/$(db)/documents/enrollments/$(request.auth.uid + '_' + c))
+        && get(/databases/$(db)/documents/enrollments/$(request.auth.uid + '_' + c)).data.status == 'active';
+    }
+
+    // Staff list: add admins/teachers by hand in the Firebase console. Doc id = admin/teacher Google email in lowercase, e.g. name@gmail.com
+    match /staff/{p} {
+      allow read: if si() && (em() == p || admin());
+      allow write: if admin();
+    }
+    match /users/{uid} {
+      allow read: if si() && (request.auth.uid == uid || admin());
+      allow create, update: if si() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name','cls','city','photo','phone','email','createdAt'])
+        && request.resource.data.email == em()
+        && request.resource.data.phone is string
+        && (request.resource.data.phone == '' || request.resource.data.phone.matches('[6-9][0-9]{9}'))
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
+        && request.resource.data.city is string && request.resource.data.city.size() > 0;
+      allow delete: if admin();
+    }
+    // One device = one account. Doc id = random device id made by the app.
+    match /devices/{did} {
+      allow get: if si();
+      allow list: if admin();
+      allow create: if si() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','email','ts'])
+        && request.resource.data.email == em();
+      allow delete: if admin();
+    }
+    match /{coll}/{id} {
+      allow read: if si() && coll in ['banners','teachers','demos','notices'];
+      allow write: if admin() && coll in ['banners','teachers','demos','notices'];
+    }
+    match /courses/{cid} {
+      allow read: if si();
+      allow create: if staff() && request.resource.data.by == em();
+      allow update, delete: if admin() || (staff() && resource.data.by == em());
+      match /lectures/{lid} {
+        allow read: if staff() || resource.data.free == true || activeEnr(cid);
+        allow write: if admin() || (staff() && course(cid).data.by == em());
+      }
+    }
+    match /enrollments/{id} {
+      allow read: if si() && (resource.data.uid == request.auth.uid || admin() || (staff() && resource.data.by == em()));
+      allow create: if si() && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.cid
+        && request.resource.data.keys().hasOnly(['uid','cid','status','done','ref','price','by','name','phone','email','date','ts'])
+        && request.resource.data.done == 0
+        && request.resource.data.price == course(request.resource.data.cid).data.p
+        && request.resource.data.by == course(request.resource.data.cid).data.by
+        && ((request.resource.data.status == 'pending' && request.resource.data.price > 0)
+            || (request.resource.data.status == 'active' && request.resource.data.price == 0));
+      allow update: if admin()
+        || (si() && resource.data.uid == request.auth.uid && resource.data.status == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done'])
+            && request.resource.data.done == resource.data.done + 1);
+      allow delete: if admin();
+    }
+  }
+}
