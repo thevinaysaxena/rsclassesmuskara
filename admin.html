@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RS Classes Muskara - Admin</title>
+<style>
+:root{--blue:#1E3A8A;--orange:#F97316;--bg:#F1F5F9;--card:#fff;--text:#0F172A;--light:#64748B;--line:#E2E8F0;--err:#DC2626}
+@media (prefers-color-scheme:dark){:root{--bg:#0B1220;--card:#131C2E;--text:#E5E7EB;--light:#94A3B8;--line:#26324A;--err:#FCA5A5}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+button{font:inherit;cursor:pointer;border:none;color:inherit}[hidden]{display:none!important}
+header{background:var(--blue);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px}
+header b{flex:1;font-size:18px}header button{background:none;color:#fff;border:1px solid #fff5;border-radius:8px;padding:6px 12px}
+.logo{width:38px;height:38px;border-radius:50%;border:3px solid var(--orange);display:flex;align-items:center;justify-content:center;font-weight:900}
+nav{display:flex;gap:6px;padding:10px 18px;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{background:none;padding:8px 14px;border-radius:20px;font-weight:600;white-space:nowrap}nav button.on{background:var(--orange);color:#fff}
+main{max-width:900px;margin:0 auto;padding:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.card,.box{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card b{display:block;font-size:26px;color:var(--orange)}.card small{color:var(--light)}
+h2{font-size:18px;margin:6px 0 12px}
+.row{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:10px;padding:12px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.row .t{flex:1;min-width:0}.row small{color:var(--light);display:block}
+.b{background:var(--orange);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600}.b.g{background:#16A34A}.b.r{background:var(--err);color:#fff}.b.o{background:none;color:var(--orange);border:1.5px solid var(--orange)}
+label{display:block;font-size:12px;color:var(--light);margin:10px 0 4px}
+input,select,textarea{width:100%;background:var(--bg);color:var(--text);border:1.5px solid var(--line);border-radius:8px;padding:10px;font:inherit}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.err{color:var(--err);margin-top:10px;font-size:14px}
+#login{max-width:380px;margin:60px auto;text-align:center;padding:0 18px}#login .box{margin-top:16px;text-align:left}
+</style>
+</head>
+<body>
+<div id="login"><div class="logo" style="margin:auto;background:#1E3A8A;color:#fff;width:64px;height:64px;font-size:24px">RS</div><h1 style="margin-top:10px">RS Classes Muskara</h1><p style="color:var(--light)">Admin / Teacher panel</p>
+  <div class="box" id="lbox"></div></div>
+<div id="app" hidden>
+  <header><div class="logo">RS</div><b>RS Classes Muskara - <span id="who"></span></b><button id="out">Logout</button></header>
+  <nav id="tabs"></nav><main id="view"></main>
+</div>
+
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* PASTE THE SAME FIREBASE WEB CONFIG AS index.html */
+const firebaseConfig={apiKey:"AIzaSyDMB4-D0Q8IVmYbTDjcyQdl3vDVjqkybZI",authDomain:"rsclassesmuskara.firebaseapp.com",projectId:"rsclassesmuskara",storageBucket:"rsclassesmuskara.firebasestorage.app",messagingSenderId:"329772192787",appId:"1:329772192787:web:1db64384daab07fc949be6"};
+if(!firebaseConfig.apiKey){document.body.innerHTML='<p style="padding:24px">Paste your Firebase config in admin.html (firebaseConfig).</p>';throw new Error('no config')}
+firebase.initializeApp(firebaseConfig);const auth=firebase.auth(),db=firebase.firestore(),TS=()=>firebase.firestore.FieldValue.serverTimestamp();
+const $=id=>document.getElementById(id);
+const h=(tag,a={},...k)=>{const e=document.createElement(tag);for(const x in a){if(x==='class')e.className=a[x];else if(x.startsWith('on'))e[x]=a[x];else e.setAttribute(x,a[x])}
+  k.flat(Infinity).filter(c=>c!=null&&c!==false).forEach(c=>e.append(c instanceof Node?c:document.createTextNode(c)));return e};
+const ERRM={'auth/invalid-phone-number':'Invalid phone number','auth/invalid-verification-code':'Wrong OTP','auth/code-expired':'OTP expired. Send again','auth/session-expired':'OTP expired. Send again','auth/too-many-requests':'Too many attempts. Try later','auth/quota-exceeded':'SMS limit reached','auth/captcha-check-failed':'Verification failed. Refresh','auth/invalid-app-credential':'Verification failed. Refresh','auth/unauthorized-domain':'Domain not authorized in Firebase Authentication settings','auth/operation-not-allowed':'Google login not enabled in Firebase','auth/popup-blocked':'Popup blocked. Allow popups and try again','auth/billing-not-enabled':'Billing needed for real SMS; use a test number','auth/operation-not-supported-in-this-environment':'Open via https:// or localhost, not as a file','auth/network-request-failed':'No internet','permission-denied':'Not allowed for your role. Publish firestore.rules'};
+const ERR=e=>ERRM[e&&e.code]||('Something went wrong'+(e&&e.code?' ('+e.code+')':''));
+const g=(q)=>q.get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
+
+let ST=null,tab='dash',ph='',cf=null,vf=null,msg='',loginErr='';   // ST = staff profile {phone, role, name}
+const admin=()=>ST&&ST.role==='admin';
+
+/* ---- login: phone OTP, then must exist in staff collection ---- */
+function loginView(step,err){
+  const b=h('button',{class:'b',style:'width:100%;margin-top:14px'},'Sign in with Google');
+  b.onclick=async()=>{
+    if(!/^https?:$/.test(location.protocol))return loginView('login',ERR({code:'auth/operation-not-supported-in-this-environment'}));
+    b.disabled=true;
+    try{const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});await auth.signInWithPopup(p)}
+    catch(x){console.error(x);const q=x&&x.code;loginView('login',(q==='auth/popup-closed-by-user'||q==='auth/cancelled-popup-request')?'':ERR(x))}};
+  const k=[h('p',{style:'color:var(--light);font-size:14px'},'Sign in with the Google account added by the admin.'),b];
+  if(err)k.push(h('div',{class:'err'},err));$('lbox').replaceChildren(...k);
+}
+async function start(u){
+  try{const em=(u.email||'').toLowerCase();const s=await db.collection('staff').doc(em).get();
+    if(!s.exists){await auth.signOut();$('app').hidden=true;$('login').hidden=false;loginErr='This Google account is not an admin or teacher.';return loginView('phone',loginErr)}
+    ST={id:em,role:s.data().role,name:s.data().name||em};
+    $('login').hidden=true;$('app').hidden=false;$('who').textContent=ST.name+' ('+ST.role+')';tab='dash';draw()}
+  catch(e){loginErr=ERR(e);await auth.signOut();loginView('phone',loginErr)}
+}
+$('out').onclick=async()=>{await auth.signOut();ST=null;$('app').hidden=true;$('login').hidden=false;loginView('phone')};
+auth.onAuthStateChanged(u=>{if(u)start(u);else{loginView('phone',loginErr);loginErr=''}});
+
+/* ---- tabs ---- */
+function draw(){
+  const T=admin()?[['dash','Dashboard'],['courses','Courses'],['content','Content'],['students','Students']]:[['dash','My sales'],['courses','My courses']];
+  $('tabs').replaceChildren(...T.map(([k,l])=>h('button',{class:tab===k?'on':'',onclick:()=>{tab=k;msg='';draw()}},l)));
+  $('view').replaceChildren(h('p',{},'Loading...'));
+  ({dash:vDash,courses:vCourses,content:vContent,students:vStudents}[tab])().then(n=>$('view').replaceChildren(...[n].flat(Infinity))).catch(e=>$('view').replaceChildren(h('div',{class:'err'},ERR(e))));
+}
+const myEnr=()=>admin()?g(db.collection('enrollments')):g(db.collection('enrollments').where('by','==',ST.id));
+const stat=(n,l)=>h('div',{class:'card'},h('b',{},n),h('small',{},l));
+
+async function vDash(){
+  const [en,co]=await Promise.all([myEnr(),admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.id))]);
+  const act=en.filter(e=>e.status==='active'),pen=en.filter(e=>e.status==='pending');
+  const rev=act.reduce((s,e)=>s+(e.price||0),0);
+  const cards=[stat(co.length,'Courses'),stat('₹'+rev,admin()?'Revenue':'Total sales'),stat(act.length,'Enrollments')];
+  if(admin()){const us=await db.collection('users').get();cards.unshift(stat(us.size,'Students'));cards.push(stat(pen.length,'Pending approvals'))}
+  const out=[h('div',{class:'cards'},cards)];
+  if(admin()){out.push(h('h2',{},'Pending approvals'),pen.length?pen.map(e=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},e.name+' · ₹'+e.price),h('small',{},(e.email||e.phone)+' · ref: '+e.ref+' · '+e.date)),
+    h('button',{class:'b g',onclick:async()=>{await db.collection('enrollments').doc(e.id).update({status:'active'});draw()}},'Approve'),
+    h('button',{class:'b r',onclick:async()=>{await db.collection('enrollments').doc(e.id).delete();draw()}},'Reject'))):h('p',{style:'color:var(--light)'},'No pending approvals.'))}
+  return out;
+}
+
+/* ---- courses ---- */
+let draft=null;
+async function vCourses(){
+  if(draft)return formView();
+  const co=await (admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.id)));
+  return [h('button',{class:'b',onclick:()=>{draft={t:'',cat:'Class 9-12',p:'',e:'📘',tg:{f:false,p:false,n:true},desc:'',notes:'',lec:[{t:'',url:''}]};draw()}},'+ Add new course'),
+    msg?h('p',{style:'color:#16A34A;margin-top:10px'},msg):null,
+    co.length?co.map(c=>h('div',{class:'row'},h('span',{style:'font-size:26px'},c.e||'📘'),h('div',{class:'t'},h('b',{},c.t),h('small',{},c.cat+' · '+(c.p>0?'₹'+c.p:'Free')+' · '+c.n+' lectures')),
+      h('button',{class:'b r',onclick:async e=>{if(e.target.dataset.s!=='1'){e.target.dataset.s='1';e.target.textContent='Tap again';return}await delCourse(c.id);msg='Course deleted';draw()}},'Delete'))):h('p',{style:'margin-top:14px;color:var(--light)'},'No courses yet.')];
+}
+async function delCourse(id){const ls=await db.collection('courses').doc(id).collection('lectures').get();const b=db.batch();ls.forEach(d=>b.delete(d.ref));b.delete(db.collection('courses').doc(id));await b.commit()}
+function formView(){
+  const d=draft,f=(l,el)=>h('div',{},h('label',{},l),el),err=h('div',{class:'err'});
+  const CATS=['Class 9-12','JEE','NEET','SSC','Banking'];
+  return h('div',{class:'box'},h('h2',{},'New course'),
+    f('Course title *',h('input',{value:d.t,oninput:e=>d.t=e.target.value})),
+    h('div',{class:'two'},f('Category',h('select',{onchange:e=>d.cat=e.target.value},CATS.map(o=>h('option',{...(d.cat===o?{selected:''}:{})},o)))),f('Price in ₹ (0 = free)',h('input',{type:'number',min:'0',value:d.p,oninput:e=>d.p=e.target.value}))),
+    h('div',{class:'two'},f('Icon (emoji)',h('input',{value:d.e,maxlength:'2',oninput:e=>d.e=e.target.value})),f('Notes PDF link (optional)',h('input',{value:d.notes,placeholder:'https://...',oninput:e=>d.notes=e.target.value}))),
+    admin()?h('div',{style:'margin-top:10px'},[['f','Featured'],['p','Popular'],['n','New']].map(([k,l])=>h('label',{style:'display:inline-block;margin-right:14px;font-size:14px;color:var(--text)'},h('input',{type:'checkbox',style:'width:auto;margin-right:6px',...(d.tg[k]?{checked:''}:{}),onchange:e=>d.tg[k]=e.target.checked}),l))):null,
+    f('Description',h('textarea',{rows:'3',oninput:e=>d.desc=e.target.value},d.desc)),
+    h('h2',{style:'margin-top:16px'},'Lectures (first one is a free preview)'),
+    d.lec.map((l,i)=>h('div',{class:'two',style:'margin-top:8px'},h('input',{placeholder:'Lecture '+(i+1)+' title',value:l.t,oninput:e=>l.t=e.target.value}),h('input',{placeholder:'YouTube/video link https://...',value:l.url,oninput:e=>l.url=e.target.value}))),
+    h('button',{class:'b o',style:'margin-top:10px',onclick:()=>{d.lec.push({t:'',url:''});draw()}},'+ Add lecture'),err,
+    h('div',{style:'margin-top:16px;display:flex;gap:10px'},h('button',{class:'b g',onclick:async e=>{
+      const ok=u=>/^https?:\/\/\S+$/.test(u.trim());
+      if(d.t.trim().length<3)return err.textContent='Enter a course title';
+      if(d.p!==''&&(isNaN(+d.p)||+d.p<0))return err.textContent='Price must be 0 or more';
+      if(d.notes.trim()&&!ok(d.notes))return err.textContent='Notes link must start with https://';
+      if(d.lec.some(l=>!l.t.trim()||!ok(l.url)))return err.textContent='Every lecture needs a title and a valid link';
+      e.target.disabled=true;
+      try{const ref=db.collection('courses').doc(),b=db.batch();
+        b.set(ref,{t:d.t.trim(),cat:d.cat,te:ST.name,p:Math.round(+d.p||0),e:d.e||'📘',tg:Object.keys(d.tg).filter(k=>d.tg[k]).join(''),n:d.lec.length,notes:d.notes.trim(),desc:d.desc.trim(),by:ST.id,ts:TS()});
+        d.lec.forEach((l,i)=>b.set(ref.collection('lectures').doc(),{t:l.t.trim(),url:l.url.trim(),o:i,free:i===0}));
+        await b.commit();draft=null;msg='Course published!';draw()}catch(x){err.textContent=ERR(x);e.target.disabled=false}}},'Publish course'),
+      h('button',{class:'b o',onclick:()=>{draft=null;draw()}},'Cancel')));
+}
+
+/* ---- banners / notices / teachers / demo classes (admin) ---- */
+const CT={banners:['Banners',[['t','Title'],['s','Subtitle'],['g','Colors (e.g. #1E3A8A,#F97316)']]],notices:['Notices',[['t','Title'],['b','Message']]],
+  teachers:['Teachers',[['n','Name'],['s','Subject'],['e','Emoji']]],demos:['Demo classes',[['t','Title'],['when','When (e.g. Sat 6 PM)'],['url','Class link https://...']]]};
+let ct='banners';
+async function vContent(){
+  const items=await g(db.collection(ct)),fields=CT[ct][1],val={};
+  const first=fields[0][0];
+  return [h('div',{style:'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap'},Object.keys(CT).map(k=>h('button',{class:'b '+(ct===k?'':'o'),onclick:()=>{ct=k;draw()}},CT[k][0]))),
+    h('div',{class:'box'},h('h2',{},'Add to '+CT[ct][0]),fields.map(([k,l])=>h('div',{},h('label',{},l),h('input',{oninput:e=>val[k]=e.target.value}))),
+      h('button',{class:'b',style:'margin-top:12px',onclick:async()=>{if(!(val[first]||'').trim())return alert('Please fill the first field');
+        const d={};fields.forEach(([k])=>d[k]=(val[k]||'').trim());if(ct==='notices')d.at=new Date().toISOString();
+        try{await db.collection(ct).add(d);draw()}catch(e){alert(ERR(e))}}},'Add')),
+    h('h2',{style:'margin-top:18px'},'Current ('+items.length+')'),
+    items.map(i=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},i[first]),h('small',{},fields.slice(1).map(([k])=>i[k]).filter(Boolean).join(' · '))),
+      h('button',{class:'b r',onclick:async()=>{await db.collection(ct).doc(i.id).delete();draw()}},'Delete')))];
+}
+async function vStudents(){
+  const us=await g(db.collection('users'));
+  return [h('h2',{},'Students ('+us.length+')'),us.length?us.map(u=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},u.name),h('small',{},(u.email||'')+(u.phone?' · '+u.phone:'')+' · '+u.cls+' · '+u.city)),
+    h('button',{class:'b r',onclick:async()=>{if(!confirm('Unlock device of '+u.name+'? Their phone can then be used with another account.'))return;
+      try{const q=await db.collection('devices').where('uid','==',u.id).get();await Promise.all(q.docs.map(d=>d.ref.delete()));alert('Device unlocked ('+q.size+')')}catch(e){alert(ERR(e))}}},'Unlock device'))):h('p',{style:'color:var(--light)'},'No students yet.')];
+}
+</script>
+</body>
+</html>
