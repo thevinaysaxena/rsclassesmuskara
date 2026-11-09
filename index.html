@@ -71,6 +71,13 @@ nav button.mid{flex:none;width:68px;height:68px;margin-top:-14px;border-radius:5
 .menu button{display:flex;width:100%;gap:14px;align-items:center;background:var(--card);padding:15px;margin-top:8px;border-radius:12px;font-size:16px;text-align:left}.menu b{margin-left:auto;color:var(--light)}
 .toast{position:fixed;left:14px;right:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px));max-width:492px;margin:0 auto;background:var(--blue);color:#fff;padding:12px;border-radius:12px;text-align:center;z-index:60;font-size:14px}
 @media print{body>*:not(#ov){display:none!important}.ovh,.noprint{display:none!important}#ov{position:static}}
+textarea{width:100%;background:var(--field);color:var(--text);border:1.5px solid var(--line);border-radius:12px;padding:12px;font:inherit;outline:none}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.qt{background:var(--card);border-radius:14px;padding:14px 6px;font-weight:700;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.1)}.qt i{display:block;font-style:normal;font-size:26px;margin-bottom:4px}
+.stat2{background:var(--card);border-radius:12px;padding:12px;text-align:center}.stat2 b{display:block;font-size:22px}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-top:8px;font-size:16px}.opt.on{border-color:var(--orange);background:rgba(249,115,22,.12)}
+.pal{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}.ps{width:100%;font-size:12px;color:var(--light);margin-top:8px}
+.pb{width:38px;height:38px;border-radius:8px;background:var(--line);font-weight:700}.pb.an{background:#16A34A;color:#fff}.pb.mk{background:#7C3AED;color:#fff}.pb.cur{outline:3px solid var(--orange)}
 </style>
 </head>
 <body>
@@ -78,14 +85,14 @@ nav button.mid{flex:none;width:68px;height:68px;margin-top:-14px;border-radius:5
 <div id="auth" class="w hidden"></div>
 <div id="main" class="w hidden"><div id="view"></div></div>
 <nav id="nav" class="hidden"><div></div></nav>
-<div id="ov" hidden></div><div class="toast" id="toast" hidden></div>
+<div id="ov" hidden></div><div class="toast" id="toast" hidden></div><div id="rc"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* PASTE YOUR FIREBASE WEB CONFIG HERE (Firebase console > Project settings > Your apps > Web) */
-const firebaseConfig={apiKey:"AIzaSyDMB4-D0Q8IVmYbTDjcyQdl3vDVjqkybZI",authDomain:"rsclassesmuskara.firebaseapp.com",projectId:"rsclassesmuskara",storageBucket:"rsclassesmuskara.firebasestorage.app",messagingSenderId:"329772192787",appId:"1:329772192787:web:1db64384daab07fc949be6"};
+const firebaseConfig={apiKey:"AIzaSyBhcfoHlnW4FoKIAvs1L_DOqgV_fGEX3NI",authDomain:"rs-classes-muskara-app.firebaseapp.com",projectId:"rs-classes-muskara-app",storageBucket:"rs-classes-muskara-app.firebasestorage.app",messagingSenderId:"261339206320",appId:"1:261339206320:web:543e7cf027dbcbcb276175"};
 if(!firebaseConfig.apiKey){document.body.innerHTML='<p style="padding:24px">Paste your Firebase config in index.html (firebaseConfig).</p>';throw new Error('no config')}
 firebase.initializeApp(firebaseConfig);const auth=firebase.auth(),db=firebase.firestore(),TS=()=>firebase.firestore.FieldValue.serverTimestamp();
 
@@ -94,20 +101,18 @@ const h=(tag,a={},...k)=>{const e=document.createElement(tag);for(const x in a){
   k.flat(Infinity).filter(c=>c!=null&&c!==false).forEach(c=>e.append(c instanceof Node?c:document.createTextNode(c)));return e};
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const toast=m=>{const e=$('toast');e.textContent=m;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)};
-const ERRM={'auth/invalid-phone-number':'Enter a valid phone number','auth/missing-phone-number':'Enter your mobile number','auth/invalid-verification-code':'Wrong OTP. Try again','auth/missing-verification-code':'Enter the 6-digit OTP','auth/code-expired':'OTP expired. Tap Resend OTP','auth/session-expired':'OTP expired. Tap Resend OTP','auth/too-many-requests':'Too many attempts. Try after some time','auth/quota-exceeded':'SMS limit reached. Try later','auth/network-request-failed':'No internet connection','auth/captcha-check-failed':'Verification failed. Refresh and try again','auth/invalid-app-credential':'Verification failed. Refresh and try again','auth/unauthorized-domain':'This website domain is not allowed in Firebase (Authentication > Settings > Authorized domains)','auth/operation-not-allowed':'Google login is not enabled in Firebase (Authentication > Sign-in method > Google)','auth/popup-blocked':'Popup was blocked. Allow popups for this site and try again','auth/account-exists-with-different-credential':'This email is registered with another login method','auth/billing-not-enabled':'Firebase billing (Blaze plan) is needed for real SMS. Use a test number or enable billing','auth/operation-not-supported-in-this-environment':'OTP needs https:// or localhost. Do not open the file directly','auth/web-storage-unsupported':'Browser storage is blocked. Enable cookies/storage','auth/user-disabled':'This account is disabled','unavailable':'No internet connection','permission-denied':'Permission denied. Publish firestore.rules in Firebase'};
-const ERR=e=>ERRM[e&&e.code]||('Something went wrong'+(e&&e.code?' ('+e.code+')':'')+'. Please try again.');
-const okEnv=()=>/^https?:$/.test(location.protocol);
+const ERR=e=>({'auth/invalid-phone-number':'Enter a valid phone number','auth/invalid-verification-code':'Wrong OTP. Try again','auth/code-expired':'OTP expired. Request a new one','auth/too-many-requests':'Too many attempts. Try later','auth/network-request-failed':'No internet connection','unavailable':'No internet connection','permission-denied':'You do not have permission for this action'}[e&&e.code])||'Something went wrong. Please try again.';
 
 const S={en:{gm:'Good morning',ga:'Good afternoon',ge:'Good evening',search:'Search courses, teachers...',feat:'Featured courses',pop:'Popular courses',newc:'New courses',cat:'Browse by category',tch:'Our teachers',demo:'Free demo classes',not:'Latest notices',lib:'Library',my:'My Courses',dl:'Downloads',edit:'Edit profile',pur:'Purchase history & invoices',cert:'Certificates',prog:'Attendance & progress',res:'Test results',notif:'Notifications',lang:'Language',help:'Help & support',about:'About',share:'Share app',terms:'Terms & privacy',out:'Logout',enr:'Enroll now',free:'FREE',empty:'No course found.',emy:'You have not enrolled in any course yet. Tap Library to explore.',edl:'Notes of your enrolled courses appear here.',save:'Save'},
 hi:{gm:'सुप्रभात',ga:'नमस्कार',ge:'शुभ संध्या',search:'कोर्स, टीचर खोजें...',feat:'खास कोर्स',pop:'लोकप्रिय कोर्स',newc:'नए कोर्स',cat:'कैटेगरी देखें',tch:'हमारे टीचर',demo:'फ्री डेमो क्लास',not:'ताज़ा सूचनाएँ',lib:'लाइब्रेरी',my:'मेरे कोर्स',dl:'डाउनलोड',edit:'प्रोफाइल बदलें',pur:'खरीद इतिहास और इनवॉइस',cert:'सर्टिफिकेट',prog:'उपस्थिति और प्रगति',res:'टेस्ट रिज़ल्ट',notif:'नोटिफिकेशन',lang:'भाषा',help:'मदद और सपोर्ट',about:'ऐप के बारे में',share:'ऐप शेयर करें',terms:'नियम और गोपनीयता',out:'लॉगआउट',enr:'अभी जुड़ें',free:'फ्री',empty:'कोई कोर्स नहीं मिला।',emy:'आपने अभी कोई कोर्स नहीं लिया। लाइब्रेरी में देखें।',edl:'आपके कोर्स के नोट्स यहाँ दिखेंगे।',save:'सेव करें'}};
 let lang=ls.get('rs_lang','en');const t=k=>(S[lang]&&S[lang][k])||S.en[k]||k;
 
-const CATS=['Class 9-12','JEE','NEET','SSC','Banking'],CC={'Class 9-12':'#1E3A8A',JEE:'#B45309',NEET:'#15803D',SSC:'#7C3AED',Banking:'#0F766E'};
+let CATS=['Class 9-12','JEE','NEET','SSC','Banking'],CC={'Class 9-12':'#1E3A8A',JEE:'#B45309',NEET:'#15803D',SSC:'#7C3AED',Banking:'#0F766E'};
 let D={courses:[],banners:[],teachers:[],demos:[],notices:[]},E={},U=null,tab='home',q='',lcat='All',hcat=CATS[0],pg=null,bt=null,cf=null,vf=null;
 const byTag=x=>D.courses.filter(c=>(c.tg||'').includes(x));
 const price=c=>c.p>0?'₹'+c.p:t('free');
-const grad=c=>'background:linear-gradient(135deg,'+(CC[c.cat]||'#475569')+',#F97316)';
-const isAct=c=>E[c.id]&&E[c.id].status==='active';
+const grad=c=>'background:linear-gradient(135deg,'+(CC[c.cat]||PALX[Math.max(0,CATS.indexOf(c.cat))%5])+',#F97316)';
+const isAct=c=>E[c.id]&&E[c.id].status==='active'&&(!E[c.id].expMs||E[c.id].expMs>Date.now());
 const pct=c=>isAct(c)&&c.n?Math.round(E[c.id].done*100/c.n):0;
 
 /* ---- splash + silent session check ---- */
@@ -117,22 +122,16 @@ Promise.all([new Promise(r=>setTimeout(r,3000)),authReady]).then(([,u])=>{$('spl
 
 async function route(u){
   if(!u)return authView();
-  let s;
-  try{
-    const o=await deviceOwner(u);
-    if(o){await auth.signOut().catch(()=>{});as.step='login';as.err='This device is already used by another account ('+mask(o.email)+'). Login with that account, or ask your teacher to reset this device.';return authView()}
-    s=await db.collection('users').doc(u.uid).get();
-  }catch(e){console.error(e);as.step='retry';as.err=ERR(e);return authView()}
-  if(!s.exists){as.step='signup';as.err='';as.name=as.name||u.displayName||'';return authView()}
-  U={uid:u.uid,...s.data()};
-  await bindDevice(u);
-  try{await enter()}catch(e){console.error(e);as.step='retry';as.err=ERR(e);authView()}
+  try{const s=await db.collection('users').doc(u.uid).get();
+    if(s.exists){U={uid:u.uid,...s.data()};await enter()}
+    else{as.step='signup';as.phone=(u.phoneNumber||'').replace('+91','');authView()}
+  }catch(e){toast(ERR(e));as.step='phone';authView()}
 }
 async function enter(){
   const g=n=>db.collection(n).get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
-  [D.courses,D.banners,D.teachers,D.demos,D.notices]=await Promise.all(['courses','banners','teachers','demos','notices'].map(g));
+  [D.courses,D.banners,D.teachers,D.demos,D.notices,D.categories]=await Promise.all(['courses','banners','teachers','demos','notices','categories'].map(g));
   D.notices.sort((a,b)=>(b.at||'').localeCompare(a.at||''));
-  const es=await db.collection('enrollments').where('uid','==',U.uid).get();E={};es.forEach(d=>E[d.data().cid]=d.data());
+  const es=await db.collection('enrollments').where('uid','==',U.uid).get();E={};es.forEach(d=>E[d.data().cid]=d.data());await loadExtras();
   $('auth').classList.add('hidden');$('main').classList.remove('hidden');$('nav').classList.remove('hidden');buildNav();tab='home';render();
 }
 
@@ -140,62 +139,37 @@ async function enter(){
 let as={step:'phone',phone:'',err:'',name:'',cls:'Class 10',city:'',photo:''};
 const CLS=['Class 9','Class 10','Class 11','Class 12','JEE','NEET','SSC','Banking','Other'];
 const errBox=()=>as.err?h('div',{class:'err'},as.err):null;
-/* ---- one device = one account ---- */
-let DID_OK=true;
-const DID=(()=>{let v=null;try{v=localStorage.getItem('rs_did')}catch(e){}
-  if(!v){v=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('d'+Date.now().toString(36)+Math.random().toString(36).slice(2,10));
-    try{localStorage.setItem('rs_did',v);if(localStorage.getItem('rs_did')!==v)DID_OK=false}catch(e){DID_OK=false}}
-  return v})();
-const mask=e=>String(e||'').replace(/^(.{2}).*(@.*)$/,'$1***$2');
-async function deviceOwner(u){            // returns the device doc if another account owns this device
-  if(!DID_OK)return null;
-  const s=await db.collection('devices').doc(DID).get();
-  if(!s.exists)return null;const d=s.data();return d.uid===u.uid?null:d;
-}
-async function bindDevice(u){             // first account to log in on a device claims it
-  if(!DID_OK)return;
-  try{const r=db.collection('devices').doc(DID);if(!(await r.get()).exists)await r.set({uid:u.uid,email:(u.email||'').toLowerCase(),ts:TS()})}
-  catch(e){console.error(e)}
-}
-async function googleLogin(){
-  const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
-  return (await auth.signInWithPopup(p)).user;
-}
 function authView(){
   $('main').classList.add('hidden');$('nav').classList.add('hidden');$('auth').classList.remove('hidden');
   const k=[h('div',{class:'logo'},'RS'),h('h1',{},'RS Classes Muskara'),h('div',{class:'tg'},'Padhai Ka Sahi Raasta')];
   const field=(l,el)=>h('div',{class:'f'},h('label',{},l),el);
-  if(as.step==='retry'){
-    const b=h('button',{class:'btn'},'Try again');b.onclick=()=>{as.err='';route(auth.currentUser)};
-    k.push(h('h2',{},'Could not load'),errBox(),b,h('button',{class:'btn g',onclick:logout},'Logout'));
-  }else if(as.step==='signup'){
+  if(as.step==='phone'){
+    const b=h('button',{class:'btn'},'Send OTP');
+    b.onclick=async()=>{if(!/^[6-9]\d{9}$/.test(as.phone)){as.err='Enter a valid 10-digit mobile number';return authView()}
+      b.disabled=true;b.textContent='Sending...';
+      try{if(vf){try{vf.clear()}catch(e){}}vf=new firebase.auth.RecaptchaVerifier('rc',{size:'invisible'});cf=await auth.signInWithPhoneNumber('+91'+as.phone,vf);as.step='otp';as.err=''}catch(e){as.err=ERR(e)}authView()};
+    k.push(h('h2',{},'Login / Sign up'),h('p',{class:'sub'},'Enter your mobile number to get an OTP'),
+      h('input',{type:'tel',inputmode:'numeric',maxlength:'10',placeholder:'10-digit mobile number',value:as.phone,oninput:e=>{as.phone=e.target.value.replace(/\D/g,'');e.target.value=as.phone}}),errBox(),b);
+  }else if(as.step==='otp'){
+    const i=h('input',{type:'tel',inputmode:'numeric',maxlength:'6',placeholder:'6-digit OTP',style:'text-align:center;letter-spacing:8px;font-size:24px'});
+    i.oninput=()=>{i.value=i.value.replace(/\D/g,'')};
+    const b=h('button',{class:'btn'},'Verify');
+    b.onclick=async()=>{if(i.value.length!==6){as.err='Enter the 6-digit OTP';return authView()}
+      b.disabled=true;b.textContent='Checking...';
+      try{const r=await cf.confirm(i.value);as.err='';await route(r.user)}catch(e){as.err=ERR(e);authView()}};
+    k.push(h('h2',{},'Verify OTP'),h('p',{class:'sub'},'OTP sent to +91 '+as.phone),i,errBox(),b,
+      h('button',{class:'btn g',onclick:()=>{as.step='phone';as.err='';authView()}},'Change number'));
+  }else{
     const b=h('button',{class:'btn'},'Create account');
-    b.onclick=async()=>{
-      const u=auth.currentUser;
-      if(!u){as.step='login';as.err='Session expired. Login again';return authView()}
-      if(as.name.trim().length<2||!as.city.trim()){as.err='Please enter your name and city';return authView()}
-      if(as.phone&&!/^[6-9]\d{9}$/.test(as.phone)){as.err='Enter a valid 10-digit mobile number or leave it empty';return authView()}
+    b.onclick=async()=>{if(as.name.trim().length<2||!as.city.trim()){as.err='Please enter your name and city';return authView()}
       b.disabled=true;
-      try{const d={name:as.name.trim(),cls:as.cls,city:as.city.trim(),photo:as.photo,phone:as.phone||'',email:(u.email||'').toLowerCase(),createdAt:TS()};
-        await db.collection('users').doc(u.uid).set(d);U={uid:u.uid,...d};as.err='';await bindDevice(u);await enter()}catch(e){console.error(e);as.err=ERR(e);authView()}};
-    k.push(h('h2',{},'Create your account'),h('p',{class:'sub'},'Signed in as '+((auth.currentUser&&auth.currentUser.email)||'')),
+      try{const d={name:as.name.trim(),cls:as.cls,city:as.city.trim(),photo:as.photo,phone:auth.currentUser.phoneNumber,createdAt:TS()};
+        await db.collection('users').doc(auth.currentUser.uid).set(d);U={uid:auth.currentUser.uid,...d};as.err='';await enter()}catch(e){as.err=ERR(e);authView()}};
+    k.push(h('h2',{},'Create your account'),h('p',{class:'sub'},'Tell us a little about you'),
       field('Full name *',h('input',{value:as.name,placeholder:'Your name',oninput:e=>as.name=e.target.value})),
       field('Class / Exam *',h('select',{onchange:e=>as.cls=e.target.value},CLS.map(o=>h('option',{value:o,...(as.cls===o?{selected:''}:{})},o)))),
       field('City *',h('input',{value:as.city,placeholder:'Your city',oninput:e=>as.city=e.target.value})),
-      field('Mobile number (optional)',h('input',{type:'tel',inputmode:'numeric',maxlength:'10',value:as.phone,placeholder:'10-digit mobile number',oninput:e=>{as.phone=e.target.value.replace(/\D/g,'');e.target.value=as.phone}})),
-      field('Profile photo (optional)',h('input',{type:'file',accept:'image/*',onchange:e=>{const f=e.target.files[0];if(f)resize(f,d=>{as.photo=d;toast('Photo added')})}})),errBox(),b,
-      h('button',{class:'btn g',onclick:logout},'Use another account'));
-  }else{
-    const b=h('button',{class:'btn'},'Continue with Google');
-    b.onclick=async()=>{
-      if(!okEnv()){as.err=ERR({code:'auth/operation-not-supported-in-this-environment'});return authView()}
-      b.disabled=true;b.textContent='Please wait...';as.err='';
-      let u;
-      try{u=await googleLogin()}
-      catch(e){console.error(e);const c=e&&e.code;as.err=(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')?'':ERR(e);return authView()}
-      await route(u)};
-    k.push(h('h2',{},'Login / Sign up'),h('p',{class:'sub'},'Continue with your Google account'),errBox(),b,
-      h('p',{class:'sub',style:'margin-top:14px;font-size:13px'},'One device can be used with one account only.'));
+      field('Profile photo (optional)',h('input',{type:'file',accept:'image/*',onchange:e=>{const f=e.target.files[0];if(f)resize(f,d=>{as.photo=d;toast('Photo added')})}})),errBox(),b);
   }
   $('auth').replaceChildren(...k);
 }
@@ -215,7 +189,7 @@ function render(){
 }
 const av=u=>u.photo?h('img',{class:'av',src:u.photo,alt:''}):h('div',{class:'av'},(u.name||'?').trim()[0].toUpperCase());
 const cCard=(c,pr)=>h('div',{class:'cc',onclick:()=>openPage(c.t,()=>detail(c.id))},h('div',{class:'th',style:grad(c)},c.e||'📘'),
-  h('div',{class:'cb'},h('b',{},c.t),h('small',{},c.te||''),pr?(E[c.id].status==='pending'?h('small',{},'⏳ Pending approval'):[h('small',{},pct(c)+'%'),h('div',{class:'bar'},h('i',{style:'width:'+pct(c)+'%'}))]):h('div',{class:'pr'},price(c))));
+  h('div',{class:'cb'},h('b',{},c.t),h('small',{},c.te||''),pr?(E[c.id].status==='pending'?h('small',{},'⏳ Pending approval'):[h('small',{},pct(c)+'%'),h('div',{class:'bar'},h('i',{style:'width:'+pct(c)+'%'}))]):h('div',{class:'pr'},price(c),c.mrp>c.p?h('s',{style:'color:var(--light);font-weight:400;margin-left:6px;font-size:12px'},'₹'+c.mrp):null)));
 const hs=l=>l.length?h('div',{class:'hs'},l.map(c=>cCard(c))):h('div',{class:'empty',style:'padding:14px'},'—');
 const chipRow=(sel,fn,all)=>h('div',{class:'chips'},(all?['All',...CATS]:CATS).map(c=>h('button',{class:'chip'+(sel===c?' on':''),onclick:()=>fn(c)},c)));
 const sec=(title,l,node)=>l.length?[h('h3',{},title),node]:null;
@@ -231,7 +205,7 @@ function tHome(){
     if(D.banners.length>1)bt=setInterval(()=>{idx=(idx+1)%D.banners.length;sl.scrollTo({left:idx*sl.clientWidth,behavior:'smooth'})},3500);
     out.push(sl,dots);
   }
-  out.push(sec(t('feat'),byTag('f'),hs(byTag('f'))),sec(t('pop'),byTag('p'),hs(byTag('p'))),sec(t('newc'),byTag('n'),hs(byTag('n'))),
+  out.push(extraHome(),sec(t('feat'),byTag('f'),hs(byTag('f'))),sec(t('pop'),byTag('p'),hs(byTag('p'))),sec(t('newc'),byTag('n'),hs(byTag('n'))),
     h('h3',{},t('cat')),chipRow(hcat,c=>{hcat=c;render()}),hs(D.courses.filter(c=>c.cat===hcat)),
     sec(t('tch'),D.teachers,h('div',{class:'hs'},D.teachers.map(x=>h('div',{class:'tc'},h('div',{class:'av'},x.e||'👨‍🏫'),h('b',{},x.n),h('small',{},x.s||''))))),
     sec(t('demo'),D.demos,D.demos.map(d=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},d.t),h('small',{},d.when||'')),h('a',{href:d.url,target:'_blank',rel:'noopener'},'Join')))),
@@ -249,9 +223,9 @@ function tDl(){const l=D.courses.filter(c=>isAct(c)&&c.notes);
 function tMe(){
   const m=(ic,k,fn)=>h('button',{onclick:fn},ic,t(k),h('b',{},'›'));
   const none=k=>()=>openPage(t(k),()=>h('div',{class:'empty'},'Nothing here yet. This will fill in once your institute adds it.'));
-  return [h('div',{class:'prof'},av(U),h('div',{},h('b',{style:'font-size:19px'},U.name),h('small',{style:'display:block;color:var(--light)'},U.email||U.phone),h('small',{style:'display:block;color:var(--light)'},U.cls+' · '+U.city))),
+  return [h('div',{class:'prof'},av(U),h('div',{},h('b',{style:'font-size:19px'},U.name),h('small',{style:'display:block;color:var(--light)'},U.phone),h('small',{style:'display:block;color:var(--light)'},U.cls+' · '+U.city))),
     h('div',{class:'menu'},m('✏️ ','edit',()=>openPage(t('edit'),pEdit)),m('🧾 ','pur',()=>openPage(t('pur'),pPur)),m('🏅 ','cert',()=>openPage(t('cert'),pCert)),
-      m('📊 ','prog',()=>openPage(t('prog'),pProg)),m('📝 ','res',none('res')),m('🔔 ','notif',()=>openPage(t('notif'),pNotif)),m('🌐 ','lang',()=>openPage(t('lang'),pLang)),
+      m('📊 ','prog',()=>openPage(t('prog'),pProg)),m('📝 ','res',()=>openPage(t('res'),pResults)),m('🔔 ','notif',()=>openPage(t('notif'),pNotif)),m('🌐 ','lang',()=>openPage(t('lang'),pLang)),
       m('💬 ','help',()=>openPage(t('help'),()=>h('div',{class:'row'},'Contact RS Classes Muskara at the institute for any help.'))),
       m('ℹ️ ','about',()=>openPage(t('about'),()=>h('div',{class:'prof'},h('div',{class:'logo',style:'width:64px;height:64px;font-size:26px;flex:none'},'RS'),h('div',{},h('b',{},'RS Classes Muskara'),h('small',{style:'display:block;color:var(--light)'},'by Rabindra Saxena'),h('small',{style:'display:block;color:var(--orange)'},'Padhai Ka Sahi Raasta'))))),
       m('📤 ','share',share),
@@ -264,60 +238,174 @@ function openPage(title,fn,keep){pg={title,fn};const o=$('ov'),sc=keep?o.scrollT
   o.replaceChildren(h('div',{class:'ovh'},h('button',{'aria-label':'Back',onclick:()=>{pg=null;o.hidden=true}},'←'),h('b',{},title)),h('div',{class:'ovb'},fn()));o.hidden=false;o.scrollTop=sc}
 async function enroll(c,status,ref){
   if(status==='pending'&&ref.trim().length<4)return toast('Enter the payment reference first');
-  const d={uid:U.uid,cid:c.id,status,done:0,ref:ref.trim(),price:c.p,by:c.by||'',name:U.name,phone:U.phone||'',email:U.email||'',date:new Date().toISOString().slice(0,10),ts:TS()};
+  const d={uid:U.uid,cid:c.id,status,done:0,expMs:(status==='active'&&c.val)?Date.now()+c.val*864e5:0,ref:ref.trim(),price:c.p,by:c.by||'',name:U.name,phone:U.phone,date:new Date().toISOString().slice(0,10),ts:TS()};
   try{await db.collection('enrollments').doc(U.uid+'_'+c.id).set(d);E[c.id]=d;toast(status==='active'?'Enrolled!':'Sent for approval');render()}catch(e){toast(ERR(e))}
 }
 function detail(id){
   const c=D.courses.find(x=>x.id===id),e=E[id],box=h('div'),act=h('div'),lw=h('div');
   box.append(h('div',{class:'th',style:grad(c)+';height:140px;font-size:64px;border-radius:16px'},c.e||'📘'),h('h3',{},c.t),
-    h('small',{style:'color:var(--light)'},c.cat+' · '+(c.te||'')+' · '+c.n+' chapters'),c.desc?h('p',{style:'margin-top:8px'},c.desc):null,act,lw);
+    h('small',{style:'color:var(--light)'},c.cat+' · '+(c.te||'')+' · '+c.n+' lectures'+(c.val?' · Valid '+c.val+' days':' · Lifetime')+(c.lang?' · '+c.lang:'')),c.desc?h('p',{style:'margin-top:8px'},c.desc):null,act,lw);
   if(!e){
     if(c.p>0){const r=h('input',{placeholder:'Payment reference / UPI transaction ID'});
       act.append(h('div',{class:'pr',style:'font-size:24px;margin-top:10px'},price(c)),h('p',{class:'sub'},'Pay ₹'+c.p+' to RS Classes Muskara (UPI or at the institute), then enter the payment reference. Access starts after approval.'),r,h('button',{class:'btn',onclick:()=>enroll(c,'pending',r.value)},'Submit for approval'))}
     else act.append(h('div',{class:'pr',style:'font-size:24px;margin-top:10px'},price(c)),h('button',{class:'btn',onclick:()=>enroll(c,'active','')},t('enr')));
   }else if(e.status==='pending')act.append(h('div',{class:'row'},'⏳ Waiting for approval from the institute'));
   else{act.append(h('small',{style:'display:block;margin-top:10px;color:var(--light)'},pct(c)+'% complete'),h('div',{class:'bar'},h('i',{style:'width:'+pct(c)+'%'})));
-    if(e.done<c.n)act.append(h('button',{class:'btn',onclick:async()=>{try{await db.collection('enrollments').doc(U.uid+'_'+id).update({done:firebase.firestore.FieldValue.increment(1)});e.done++;if(e.done===c.n)toast('Course complete! Certificate ready');render()}catch(x){toast(ERR(x))}}},'▶ Mark next chapter complete ('+(e.done+1)+'/'+c.n+')'));
+    if(e.done<c.n)act.append(h('button',{class:'btn',onclick:async()=>{try{await db.collection('enrollments').doc(U.uid+'_'+id).update({done:firebase.firestore.FieldValue.increment(1)});e.done++;if(e.done===c.n)toast('Course complete! Certificate ready');render()}catch(x){toast(ERR(x))}}},'▶ Mark next lecture complete ('+(e.done+1)+'/'+c.n+')'));
     else act.append(h('div',{class:'row'},'🏅 Completed - see Certificates in Profile'));}
-  lw.append(h('div',{class:'row'},'Loading...'));
+  lw.append(h('h3',{},'Lectures'));
   const col=db.collection('courses').doc(id).collection('lectures');
-  const isPdf=u=>/\.pdf(\?|#|$)/i.test(u),FN=x=>x.f||'Lectures';
-  function showFolders(items){
-    lw.replaceChildren(h('h3',{},'Content'));
-    const names=c.fl&&c.fl.length?c.fl:[...new Set(items.map(FN))].map(n=>({n,c:items.filter(x=>FN(x)===n).length}));
-    if(!names.length)lw.append(h('div',{class:'empty'},'Content will be added soon'));
-    names.forEach(f=>{const open=items.some(x=>FN(x)===f.n);
-      lw.append(h('div',{class:'row',style:'cursor:pointer',onclick:()=>open?showChapters(f,items):toast('Enroll to unlock this folder')},
-        h('span',{style:'font-size:30px'},open?'📁':'🔒'),h('div',{class:'t'},h('b',{},f.n),h('small',{},f.c+' chapters')),h('span',{style:'font-size:22px'},'›')))})}
-  function showChapters(f,items){
-    const its=items.filter(x=>FN(x)===f.n);
-    lw.replaceChildren(h('button',{class:'btn g',onclick:()=>showFolders(items)},'← All folders'),h('h3',{},'📁 '+f.n));
-    its.forEach((x,i)=>lw.append(h('div',{class:'row'},h('div',{class:'t'},h('b',{},(i+1)+'. '+x.t),x.free&&!isAct(c)?h('small',{},'Free preview'):null),
-      h('a',{href:x.url,target:'_blank',rel:'noopener'},isPdf(x.url)?'📄 Open':'▶ Watch'))));
-    if(its.length<f.c)lw.append(h('div',{class:'row'},'🔒 '+(f.c-its.length)+' more chapters after enrollment'))}
-  (isAct(c)?col:col.where('free','==',true)).get()
-    .then(s=>showFolders(s.docs.map(d=>d.data()).sort((a,b)=>(a.fo||0)-(b.fo||0)||a.o-b.o)))
-    .catch(x=>lw.replaceChildren(h('div',{class:'err'},ERR(x))));
+  (isAct(c)?col:col.where('free','==',true)).get().then(s=>{const l=s.docs.map(d=>d.data()).sort((a,b)=>a.o-b.o);
+    l.forEach((x,i)=>lw.append(h('div',{class:'row'},h('div',{class:'t'},h('b',{},(x.o+1)+'. '+x.t),x.free&&!isAct(c)?h('small',{},'Free preview'):null),h('a',{href:x.url,target:'_blank',rel:'noopener'},'▶ Watch'))));
+    if(l.length<c.n)lw.append(h('div',{class:'row'},'🔒 '+(c.n-l.length)+' more lectures after enrollment'))}).catch(x=>lw.append(h('div',{class:'err'},ERR(x))));
   return box;
 }
 const docPage=(title,lines)=>[h('div',{class:'row',style:'display:block;line-height:1.7'},h('h3',{style:'margin:0 0 6px'},title),lines.map(l=>h('div',{},l))),h('button',{class:'btn noprint',onclick:()=>window.print()},'Print / Save as PDF')];
 function pPur(){const l=D.courses.filter(c=>E[c.id]);return l.length?l.map(c=>{const e=E[c.id];return h('div',{class:'row'},h('div',{class:'t'},h('b',{},c.t),h('small',{},e.date+' · '+price(c)+' · '+(e.status==='active'?'Paid':'Pending approval'))),
-  e.status==='active'?h('button',{class:'s',onclick:()=>openPage('Invoice',()=>docPage('Invoice - RS Classes Muskara',['Invoice no: RSM-'+e.date.replace(/-/g,'')+'-'+c.id.slice(0,5).toUpperCase(),'Student: '+U.name+' ('+(U.email||U.phone)+')','Course: '+c.t,'Date: '+e.date,'Amount: '+price(c),'Reference: '+(e.ref||'-')]))},'Invoice'):null)}):h('div',{class:'empty'},t('emy'))}
+  e.status==='active'?h('button',{class:'s',onclick:()=>openPage('Invoice',()=>docPage('Invoice - RS Classes Muskara',['Invoice no: RSM-'+e.date.replace(/-/g,'')+'-'+c.id.slice(0,5).toUpperCase(),'Student: '+U.name+' ('+U.phone+')','Course: '+c.t,'Date: '+e.date,'Amount: '+price(c),'Reference: '+(e.ref||'-')]))},'Invoice'):null)}):h('div',{class:'empty'},t('emy'))}
 function pCert(){const l=D.courses.filter(c=>isAct(c)&&E[c.id].done>=c.n&&c.n>0);return l.length?l.map(c=>h('div',{class:'row'},h('span',{style:'font-size:28px'},'🏅'),h('div',{class:'t'},h('b',{},c.t)),
   h('button',{class:'s',onclick:()=>openPage('Certificate',()=>docPage('Certificate of Completion',['This certifies that '+U.name,'has completed the course','"'+c.t+'"','at RS Classes Muskara - by Rabindra Saxena']))},'View'))):h('div',{class:'empty'},'Complete a course to earn your certificate.')}
 function pProg(){const l=D.courses.filter(c=>isAct(c));return l.length?l.map(c=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},c.t),h('small',{},pct(c)+'% complete'),h('div',{class:'bar'},h('i',{style:'width:'+pct(c)+'%'}))))):h('div',{class:'empty'},t('emy'))}
 function pNotif(){return D.notices.length?D.notices.map(n=>h('div',{class:'row'},h('span',{style:'font-size:22px'},'🔔'),h('div',{class:'t'},h('b',{},n.t),h('small',{},n.b||'')))):h('div',{class:'empty'},'No notices yet.')}
 function pLang(){return ['en','hi'].map(l=>h('button',{class:'btn'+(lang===l?'':' g'),onclick:()=>{lang=l;ls.set('rs_lang',l);pg=null;$('ov').hidden=true;render()}},l==='en'?'English':'हिंदी'))}
 function pEdit(){
-  const d={name:U.name,cls:U.cls,city:U.city,photo:U.photo||'',phone:U.phone||''},f=(l,el)=>h('div',{class:'f'},h('label',{},l),el);
+  const d={name:U.name,cls:U.cls,city:U.city,photo:U.photo||''},f=(l,el)=>h('div',{class:'f'},h('label',{},l),el);
   return [f('Full name',h('input',{value:d.name,oninput:e=>d.name=e.target.value})),f('Class / Exam',h('select',{onchange:e=>d.cls=e.target.value},CLS.map(o=>h('option',{value:o,...(d.cls===o?{selected:''}:{})},o)))),
-    f('City',h('input',{value:d.city,oninput:e=>d.city=e.target.value})),f('Mobile (optional)',h('input',{type:'tel',inputmode:'numeric',maxlength:'10',value:d.phone,oninput:e=>{d.phone=e.target.value.replace(/\D/g,'');e.target.value=d.phone}})),f('Change photo',h('input',{type:'file',accept:'image/*',onchange:e=>{const x=e.target.files[0];if(x)resize(x,r=>d.photo=r)}})),
-    h('button',{class:'btn',onclick:async()=>{if(d.name.trim().length<2||!d.city.trim())return toast('Name and city are required');if(d.phone&&!/^[6-9]\d{9}$/.test(d.phone))return toast('Enter a valid 10-digit mobile number');
-      const n={name:d.name.trim(),cls:d.cls,city:d.city.trim(),photo:d.photo,phone:d.phone,email:U.email,createdAt:U.createdAt||TS()};
+    f('City',h('input',{value:d.city,oninput:e=>d.city=e.target.value})),f('Change photo',h('input',{type:'file',accept:'image/*',onchange:e=>{const x=e.target.files[0];if(x)resize(x,r=>d.photo=r)}})),
+    h('button',{class:'btn',onclick:async()=>{if(d.name.trim().length<2||!d.city.trim())return toast('Name and city are required');
+      const n={name:d.name.trim(),cls:d.cls,city:d.city.trim(),photo:d.photo,phone:U.phone,createdAt:U.createdAt||TS()};
       try{await db.collection('users').doc(U.uid).set(n);U={uid:U.uid,...n};pg=null;$('ov').hidden=true;toast('Profile updated');render()}catch(e){toast(ERR(e))}}},t('save'))];
 }
 function share(){const m='RS Classes Muskara - Padhai Ka Sahi Raasta '+location.href;
   if(navigator.share)navigator.share({title:'RS Classes Muskara',text:m}).catch(()=>{});else{try{navigator.clipboard.writeText(m).then(()=>toast('Link copied'),()=>toast(m))}catch(e){toast(m)}}}
+</script>
+<script>
+/* ===== PHASE 2: categories, tests, doubts, study material, home extras ===== */
+let A={};D.tests=[];
+const PALX=['#1E3A8A','#B45309','#15803D','#7C3AED','#0F766E'];
+const SUBJL=['Maths','Physics','Chemistry','Biology','English','GK','Reasoning','Other'];
+async function loadExtras(){
+  if(D.categories&&D.categories.length){CATS=D.categories.map(c=>c.n);hcat=CATS[0]}
+  try{const s=await db.collection('tests').where('pub','==',true).get();D.tests=s.docs.map(d=>({id:d.id,...d.data()}))}catch(e){D.tests=[]}
+  try{const s=await db.collection('attempts').where('uid','==',U.uid).get();A={};s.forEach(d=>A[d.data().tid]=d.data())}catch(e){A={}}
+}
+const pad2=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function resizeTo(file,w,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,w/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.6))};im.src=r.result};r.readAsDataURL(file)}
+const srt=(a,b)=>(b.ts?b.ts.seconds:9e9)-(a.ts?a.ts.seconds:9e9);
+
+/* ---- home: quick tiles, continue learning, recent results ---- */
+function extraHome(){
+  const tiles=[['📝','Test Series',()=>openPage('Test Series',pTests)],['❓','Doubts',()=>openPage('Doubts',pDoubts)],['📚','Study Material',()=>{tab='dl';render()}]];
+  const out=[h('div',{class:'g3'},tiles.map(([i,l,f])=>h('button',{class:'qt',onclick:f},h('i',{},i),l)))];
+  const cont=D.courses.find(c=>isAct(c)&&E[c.id].done<c.n);
+  if(cont)out.push(h('h3',{},'Continue learning'),h('div',{class:'row',style:'cursor:pointer',onclick:()=>openPage(cont.t,()=>detail(cont.id))},h('span',{style:'font-size:28px'},cont.e||'📘'),h('div',{class:'t'},h('b',{},cont.t),h('small',{},pct(cont)+'% complete'),h('div',{class:'bar'},h('i',{style:'width:'+pct(cont)+'%'})))));
+  const rs=Object.values(A).filter(a=>a.score!=null).slice(0,3);
+  if(rs.length)out.push(h('h3',{},'Recent test results'),rs.map(a=>{const tt=D.tests.find(x=>x.id===a.tid);return tt?h('div',{class:'row',style:'cursor:pointer',onclick:()=>openPage(tt.t,()=>resultBox(tt))},h('div',{class:'t'},h('b',{},tt.t),h('small',{},a.correct+' correct · '+a.wrong+' wrong')),h('b',{style:'color:var(--orange)'},a.score)):null}));
+  return out;
+}
+
+/* ---- study material (Downloads tab) ---- */
+function tDl(){
+  const box=h('div'),list=h('div');let all=[],ty='All',qq='';
+  const TY=['All','Notes','PYQ','Practice','Revision','Answer key','Important'];
+  const paint=()=>{const l=all.filter(m=>(ty==='All'||m.type===ty)&&((m.t||'')+(m.cat||'')).toLowerCase().includes(qq.toLowerCase()));
+    list.replaceChildren(...(l.length?l.map(m=>h('div',{class:'row'},h('span',{style:'font-size:26px'},'📄'),h('div',{class:'t'},h('b',{},m.t),h('small',{},m.type+(m.cat?' · '+m.cat:''))),h('a',{href:m.url,target:'_blank',rel:'noopener'},'Open'))):[h('div',{class:'empty'},t('edl'))]))};
+  box.append(h('h3',{style:'margin-top:4px'},t('dl')),h('input',{placeholder:'Search study material...',oninput:e=>{qq=e.target.value;paint()}}),
+    h('div',{class:'chips',style:'margin-top:10px'},TY.map(x=>h('button',{class:'chip'+(x==='All'?' on':''),onclick:e=>{ty=x;[...e.target.parentNode.children].forEach(y=>y.classList.toggle('on',y===e.target));paint()}},x))),list);
+  const qs=[db.collection('materials').where('cid','==','')].concat(D.courses.filter(isAct).map(c=>db.collection('materials').where('cid','==',c.id)));
+  Promise.all(qs.map(q=>q.get())).then(ss=>{all=ss.flatMap(s=>s.docs.map(d=>({id:d.id,...d.data()})));
+    D.courses.filter(c=>isAct(c)&&c.notes).forEach(c=>all.push({id:'n'+c.id,t:c.t+' - Notes',type:'Notes',cat:c.cat,url:c.notes}));paint()}).catch(e=>list.replaceChildren(h('div',{class:'err'},ERR(e))));
+  return box;
+}
+
+/* ---- test series ---- */
+function pTests(){
+  if(!D.tests.length)return h('div',{class:'empty'},'No tests yet. Your institute will publish tests here.');
+  return D.tests.map(tt=>{const a=A[tt.id],c=tt.cid&&D.courses.find(x=>x.id===tt.cid),lock=tt.cid&&!(c&&isAct(c));
+    return h('div',{class:'row'},h('div',{class:'t'},h('b',{},tt.t),h('small',{},(tt.cat||'')+' · '+tt.dur+' min · '+tt.n+' questions · +'+tt.pos+' / -'+tt.neg),lock?h('small',{},'🔒 Enroll in "'+(c?c.t:'the course')+'" to attempt'):null),
+      a?h('button',{class:'s',onclick:()=>openPage(tt.t,()=>resultBox(tt))},'Result'):(lock?h('span',{},'🔒'):h('button',{class:'s',onclick:()=>openPage(tt.t,()=>startBox(tt))},'Start')))});
+}
+function startBox(tt){const resume=!!ls.get('rs_t_'+tt.id+'_'+U.uid,null);
+  return [h('div',{class:'row',style:'display:block;line-height:1.7'},h('h3',{style:'margin:0 0 6px'},tt.t),h('div',{},'Questions: '+tt.n),h('div',{},'Time: '+tt.dur+' minutes'),h('div',{},'Marking: +'+tt.pos+' for correct, -'+tt.neg+' for wrong'),h('div',{},'You can attempt this test only once. It submits automatically when time ends.')),
+    h('button',{class:'btn',onclick:()=>{pg=null;$('ov').hidden=true;runTest(tt)}},resume?'Resume test':'Start test')]}
+async function runTest(tt){
+  let qs;try{const s=await db.collection('tests').doc(tt.id).collection('questions').get();qs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.order-b.order)}catch(e){return toast(ERR(e))}
+  if(!qs.length)return toast('This test has no questions');
+  const key='rs_t_'+tt.id+'_'+U.uid,st=ls.get(key,null)||{a:{},m:{},end:Date.now()+tt.dur*60000};ls.set(key,st);
+  let cur=0,done=false;const timerEl=h('b'),box=h('div',{style:'position:fixed;inset:0;z-index:45;background:var(--bg);overflow:auto;padding-top:env(safe-area-inset-top,0px)'});document.body.append(box);
+  const submit=()=>{if(done)return;done=true;clearInterval(iv);ls.set(key,null);finishTest(tt,st.a,box)};
+  const iv=setInterval(()=>{const left=Math.max(0,Math.round((st.end-Date.now())/1000));timerEl.textContent=pad2(left);if(left<=0){toast('Time is over - submitting');submit()}},1000);
+  const save=()=>ls.set(key,st);
+  function draw(){const q=qs[cur],ans=st.a[q.id];
+    box.replaceChildren(
+      h('div',{class:'ovh'},h('b',{style:'flex:1'},tt.t),h('span',{},'⏱'),timerEl,h('button',{style:'font-size:15px;border:1px solid #fff8;border-radius:8px;padding:4px 10px',onclick:()=>{const un=qs.filter(x=>st.a[x.id]==null).length;if(confirm('Submit the test? Unanswered: '+un))submit()}},'Submit')),
+      h('div',{class:'ovb'},h('small',{style:'color:var(--light)'},'Question '+(cur+1)+' of '+qs.length+(q.s?' · '+q.s:'')),
+        h('p',{style:'font-size:18px;margin:8px 0 12px;line-height:1.5'},q.q),
+        q.o.map((o,i)=>h('button',{class:'opt'+(ans===i?' on':''),onclick:()=>{st.a[q.id]=i;save();draw()}},h('b',{},'ABCD'[i]+'. '),o)),
+        h('div',{style:'display:flex;gap:8px;margin-top:12px'},h('button',{class:'btn g',style:'margin:0',onclick:()=>{cur=Math.max(0,cur-1);draw()}},'← Prev'),h('button',{class:'btn',style:'margin:0',onclick:()=>{cur=Math.min(qs.length-1,cur+1);draw()}},'Next →')),
+        h('div',{style:'display:flex;gap:8px;margin-top:8px'},h('button',{class:'btn g',style:'margin:0;min-height:44px;font-size:15px',onclick:()=>{st.m[q.id]=!st.m[q.id];save();draw()}},st.m[q.id]?'Unmark review':'🔖 Mark for review'),h('button',{class:'btn g',style:'margin:0;min-height:44px;font-size:15px',onclick:()=>{delete st.a[q.id];save();draw()}},'Clear answer')),
+        h('div',{class:'pal'},qs.map((x,i)=>[i===0||x.s!==qs[i-1].s?h('div',{class:'ps'},x.s||''):null,h('button',{class:'pb'+(i===cur?' cur':'')+(st.m[x.id]?' mk':st.a[x.id]!=null?' an':''),onclick:()=>{cur=i;draw()}},i+1)]))))}
+  draw();
+}
+async function finishTest(tt,answers,box){
+  box.replaceChildren(h('div',{class:'ovb'},h('div',{class:'empty'},'Submitting...')));
+  try{await db.collection('attempts').doc(U.uid+'_'+tt.id).set({uid:U.uid,tid:tt.id,name:U.name,answers,ts:TS()})}catch(e){toast(ERR(e));box.remove();return}
+  const close=()=>{box.remove();render()};
+  try{const n=await resultNode(tt);box.replaceChildren(h('div',{class:'ovh'},h('button',{onclick:close},'←'),h('b',{},'Result')),h('div',{class:'ovb'},n))}
+  catch(e){box.replaceChildren(h('div',{class:'ovb'},h('div',{class:'err'},ERR(e)),h('button',{class:'btn',onclick:close},'Close')))}
+}
+function resultBox(tt){const b=h('div',{},h('div',{class:'empty'},'Loading result...'));resultNode(tt).then(n=>b.replaceChildren(n)).catch(e=>b.replaceChildren(h('div',{class:'err'},ERR(e))));return b}
+async function resultNode(tt){
+  const id=U.uid+'_'+tt.id,tr=db.collection('tests').doc(tt.id);
+  const [qsS,kS,aS,allS]=await Promise.all([tr.collection('questions').get(),tr.collection('keys').get(),db.collection('attempts').doc(id).get(),db.collection('attempts').where('tid','==',tt.id).get()]);
+  const qs=qsS.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.order-b.order),K={};kS.forEach(d=>K[d.id]=d.data());
+  const at=aS.data(),ans=at.answers||{};let c=0,w=0,sk=0;const sub={};
+  qs.forEach(q=>{const s=q.s||'General';sub[s]=sub[s]||{c:0,w:0,s:0};const a=ans[q.id];if(a==null||!K[q.id]){sk++;sub[s].s++}else if(a===K[q.id].a){c++;sub[s].c++}else{w++;sub[s].w++}});
+  const score=Math.round((c*tt.pos-w*tt.neg)*100)/100;
+  if(at.score==null){try{await db.collection('attempts').doc(id).update({score,correct:c,wrong:w,skipped:sk,subj:sub})}catch(e){}}
+  A[tt.id]={...at,score,correct:c,wrong:w,skipped:sk};
+  const scores=allS.docs.filter(d=>d.id!==id).map(d=>d.data().score).filter(x=>x!=null);scores.push(score);
+  const rank=1+scores.filter(x=>x>score).length,n=scores.length,pc=Math.round(scores.filter(x=>x<score).length/n*1000)/10;
+  const mk=(l,v,col)=>h('div',{class:'stat2'},h('b',{style:'color:'+col},v),h('small',{style:'color:var(--light)'},l));
+  return h('div',{},h('div',{class:'prof',style:'display:block;text-align:center'},h('div',{style:'font-size:34px;font-weight:800;color:var(--orange)'},score+' / '+(tt.n*tt.pos)),h('small',{style:'color:var(--light)'},'Rank '+rank+' of '+n+' · Percentile '+pc)),
+    h('div',{class:'g3'},mk('Correct',c,'#16A34A'),mk('Wrong',w,'var(--err)'),mk('Skipped',sk,'var(--light)')),
+    h('h3',{},'Subject-wise performance'),Object.entries(sub).map(([s,v])=>{const tot=v.c+v.w+v.s,acc=tot?Math.round(v.c*100/tot):0;return h('div',{class:'row',style:'display:block'},h('b',{},s),h('small',{},v.c+'/'+tot+' correct · accuracy '+acc+'%'),h('div',{class:'bar'},h('i',{style:'width:'+acc+'%'})))}),
+    h('h3',{},'Answers & explanations'),qs.map((q,i)=>{const a=ans[q.id],ka=K[q.id]?K[q.id].a:-1;
+      return h('div',{class:'row',style:'display:block;border-left:4px solid '+(a==null?'var(--line)':a===ka?'#16A34A':'var(--err)')},h('b',{},(i+1)+'. '+q.q),
+        q.o.map((o,j)=>h('div',{style:'margin-top:4px;'+(j===ka?'color:#16A34A;font-weight:700':j===a?'color:var(--err)':'')},'ABCD'[j]+'. '+o+(j===ka?' ✓':j===a?' ✗ (your answer)':''))),
+        K[q.id]&&K[q.id].ex?h('small',{style:'margin-top:6px'},'💡 '+K[q.id].ex):null)}));
+}
+function pResults(){const l=Object.values(A).filter(a=>a.score!=null).map(a=>({a,tt:D.tests.find(x=>x.id===a.tid)})).filter(x=>x.tt);
+  return l.length?l.map(({a,tt})=>h('div',{class:'row',style:'cursor:pointer',onclick:()=>openPage(tt.t,()=>resultBox(tt))},h('div',{class:'t'},h('b',{},tt.t),h('small',{},a.correct+' correct · '+a.wrong+' wrong · '+a.skipped+' skipped')),h('b',{style:'color:var(--orange)'},a.score+' / '+tt.n*tt.pos))):h('div',{class:'empty'},'You have not attempted any test yet. Open Test Series from Home.')}
+
+/* ---- doubts ---- */
+function pDoubts(){
+  const box=h('div'),list=h('div');let all=[],sub='All';
+  const paint=()=>{const l=all.filter(d=>sub==='All'||d.subject===sub);
+    list.replaceChildren(...(l.length?l.map(d=>h('div',{class:'row',style:'cursor:pointer',onclick:()=>openPage('Doubt',()=>doubtView(d.id))},h('div',{class:'t'},h('b',{},d.q.slice(0,70)),h('small',{},d.subject+' · '+(d.status==='resolved'?'✅ Resolved':d.sr?'💬 Answered':'⏳ Waiting'))))):[h('div',{class:'empty'},'No doubts here.')]))};
+  box.append(h('button',{class:'btn',style:'margin-top:0',onclick:()=>openPage('Ask a doubt',pAsk)},'+ Ask a doubt'),
+    h('div',{class:'chips',style:'margin-top:12px'},['All',...SUBJL].map(s=>h('button',{class:'chip'+(s==='All'?' on':''),onclick:e=>{sub=s;[...e.target.parentNode.children].forEach(x=>x.classList.toggle('on',x===e.target));paint()}},s))),list);
+  db.collection('doubts').where('uid','==',U.uid).get().then(s=>{all=s.docs.map(d=>({id:d.id,...d.data()})).sort(srt);paint()}).catch(e=>list.append(h('div',{class:'err'},ERR(e))));
+  return box;
+}
+function pAsk(){
+  const d={subject:SUBJL[0],q:'',img:''};
+  return [h('div',{class:'f'},h('label',{},'Subject'),h('select',{onchange:e=>d.subject=e.target.value},SUBJL.map(s=>h('option',{},s)))),
+    h('div',{class:'f'},h('label',{},'Your question *'),h('textarea',{rows:'5',oninput:e=>d.q=e.target.value})),
+    h('div',{class:'f'},h('label',{},'Add a photo (optional)'),h('input',{type:'file',accept:'image/*',onchange:e=>{const x=e.target.files[0];if(x)resizeTo(x,640,r=>{d.img=r;toast('Photo added')})}})),
+    h('button',{class:'btn',onclick:async e=>{if(d.q.trim().length<5)return toast('Write your question (at least 5 letters)');e.target.disabled=true;
+      try{await db.collection('doubts').add({uid:U.uid,name:U.name,subject:d.subject,q:d.q.trim(),img:d.img,status:'open',ts:TS(),sr:0});toast('Doubt sent to teachers');openPage('Doubts',pDoubts)}catch(x){toast(ERR(x));e.target.disabled=false}}},'Send doubt')];
+}
+function doubtView(id){
+  const box=h('div'),dr=db.collection('doubts').doc(id);
+  Promise.all([dr.get(),dr.collection('replies').get()]).then(([ds,rs])=>{const d=ds.data(),reps=rs.docs.map(x=>x.data()).sort((a,b)=>-srt(a,b));const ta=h('textarea',{rows:'3',placeholder:'Write a reply...'});
+    box.replaceChildren(h('div',{class:'row',style:'display:block'},h('small',{},d.subject+' · '+d.status),h('p',{style:'margin:6px 0;white-space:pre-wrap'},d.q),d.img?h('img',{src:d.img,style:'max-width:100%;border-radius:8px'}):null),
+      reps.map(r=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},r.staff?'👨‍🏫 Teacher':'You'),h('small',{style:'white-space:pre-wrap;color:var(--text)'},r.text)))),
+      h('div',{class:'f'},ta),
+      h('button',{class:'btn',onclick:async()=>{const x=ta.value.trim();if(x.length<2)return toast('Write something first');try{await dr.collection('replies').add({uid:U.uid,name:U.name,staff:false,text:x,ts:TS()});openPage('Doubt',()=>doubtView(id))}catch(e){toast(ERR(e))}}},'Send'),
+      d.status==='open'?h('button',{class:'btn g',onclick:async()=>{try{await dr.update({status:'resolved'});openPage('Doubt',()=>doubtView(id))}catch(e){toast(ERR(e))}}},'Mark as resolved'):null)}).catch(e=>box.replaceChildren(h('div',{class:'err'},ERR(e))));
+  return box;
+}
 </script>
 </body>
 </html>

@@ -37,66 +37,64 @@ input,select,textarea{width:100%;background:var(--bg);color:var(--text);border:1
   <header><div class="logo">RS</div><b>RS Classes Muskara - <span id="who"></span></b><button id="out">Logout</button></header>
   <nav id="tabs"></nav><main id="view"></main>
 </div>
-
+<div id="rc"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* PASTE THE SAME FIREBASE WEB CONFIG AS index.html */
-const firebaseConfig={apiKey:"AIzaSyDMB4-D0Q8IVmYbTDjcyQdl3vDVjqkybZI",authDomain:"rsclassesmuskara.firebaseapp.com",projectId:"rsclassesmuskara",storageBucket:"rsclassesmuskara.firebasestorage.app",messagingSenderId:"329772192787",appId:"1:329772192787:web:1db64384daab07fc949be6"};
+const firebaseConfig={apiKey:"AIzaSyBhcfoHlnW4FoKIAvs1L_DOqgV_fGEX3NI",authDomain:"rs-classes-muskara-app.firebaseapp.com",projectId:"rs-classes-muskara-app",storageBucket:"rs-classes-muskara-app.firebasestorage.app",messagingSenderId:"261339206320",appId:"1:261339206320:web:543e7cf027dbcbcb276175"};
 if(!firebaseConfig.apiKey){document.body.innerHTML='<p style="padding:24px">Paste your Firebase config in admin.html (firebaseConfig).</p>';throw new Error('no config')}
 firebase.initializeApp(firebaseConfig);const auth=firebase.auth(),db=firebase.firestore(),TS=()=>firebase.firestore.FieldValue.serverTimestamp();
 const $=id=>document.getElementById(id);
 const h=(tag,a={},...k)=>{const e=document.createElement(tag);for(const x in a){if(x==='class')e.className=a[x];else if(x.startsWith('on'))e[x]=a[x];else e.setAttribute(x,a[x])}
   k.flat(Infinity).filter(c=>c!=null&&c!==false).forEach(c=>e.append(c instanceof Node?c:document.createTextNode(c)));return e};
-const ERRM={'auth/invalid-phone-number':'Invalid phone number','auth/invalid-verification-code':'Wrong OTP','auth/code-expired':'OTP expired. Send again','auth/session-expired':'OTP expired. Send again','auth/too-many-requests':'Too many attempts. Try later','auth/quota-exceeded':'SMS limit reached','auth/captcha-check-failed':'Verification failed. Refresh','auth/invalid-app-credential':'Verification failed. Refresh','auth/unauthorized-domain':'Domain not authorized in Firebase Authentication settings','auth/operation-not-allowed':'Google login not enabled in Firebase','auth/popup-blocked':'Popup blocked. Allow popups and try again','auth/billing-not-enabled':'Billing needed for real SMS; use a test number','auth/operation-not-supported-in-this-environment':'Open via https:// or localhost, not as a file','auth/network-request-failed':'No internet','permission-denied':'Not allowed for your role. Publish firestore.rules'};
-const ERR=e=>ERRM[e&&e.code]||('Something went wrong'+(e&&e.code?' ('+e.code+')':''));
+const ERR=e=>({'auth/invalid-phone-number':'Invalid phone number','auth/invalid-verification-code':'Wrong OTP','auth/too-many-requests':'Too many attempts','permission-denied':'Not allowed for your role'}[e&&e.code])||'Something went wrong';
 const g=(q)=>q.get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
-let ST=null,tab='dash',ph='',cf=null,vf=null,msg='',loginErr='';   // ST = staff profile {phone, role, name}
+let ST=null,tab='dash',ph='',cf=null,vf=null,msg='';   // ST = staff profile {phone, role, name}
 const admin=()=>ST&&ST.role==='admin';
 
 /* ---- login: phone OTP, then must exist in staff collection ---- */
 function loginView(step,err){
-  const b=h('button',{class:'b',style:'width:100%;margin-top:14px'},'Sign in with Google');
-  b.onclick=async()=>{
-    if(!/^https?:$/.test(location.protocol))return loginView('login',ERR({code:'auth/operation-not-supported-in-this-environment'}));
-    b.disabled=true;
-    try{const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});await auth.signInWithPopup(p)}
-    catch(x){console.error(x);const q=x&&x.code;loginView('login',(q==='auth/popup-closed-by-user'||q==='auth/cancelled-popup-request')?'':ERR(x))}};
-  const k=[h('p',{style:'color:var(--light);font-size:14px'},'Sign in with the Google account added by the admin.'),b];
+  const k=[];
+  if(step!=='otp'){const i=h('input',{type:'tel',maxlength:'10',placeholder:'10-digit mobile number',value:ph});
+    k.push(h('label',{},'Mobile number'),i,h('button',{class:'b',style:'width:100%;margin-top:14px',onclick:async e=>{ph=i.value.replace(/\D/g,'');if(!/^[6-9]\d{9}$/.test(ph))return loginView('phone','Enter a valid number');
+      e.target.disabled=true;try{if(vf){try{vf.clear()}catch(x){}}vf=new firebase.auth.RecaptchaVerifier('rc',{size:'invisible'});cf=await auth.signInWithPhoneNumber('+91'+ph,vf);loginView('otp')}catch(x){loginView('phone',ERR(x))}}},'Send OTP'))}
+  else{const i=h('input',{type:'tel',maxlength:'6',placeholder:'6-digit OTP'});
+    k.push(h('label',{},'OTP sent to +91 '+ph),i,h('button',{class:'b',style:'width:100%;margin-top:14px',onclick:async e=>{e.target.disabled=true;try{await cf.confirm(i.value.trim())}catch(x){loginView('otp',ERR(x))}}},'Verify'))}
   if(err)k.push(h('div',{class:'err'},err));$('lbox').replaceChildren(...k);
 }
 async function start(u){
-  try{const em=(u.email||'').toLowerCase();const s=await db.collection('staff').doc(em).get();
-    if(!s.exists){await auth.signOut();$('app').hidden=true;$('login').hidden=false;loginErr='This Google account is not an admin or teacher.';return loginView('phone',loginErr)}
-    ST={id:em,role:s.data().role,name:s.data().name||em};
-    $('login').hidden=true;$('app').hidden=false;$('who').textContent=ST.name+' ('+ST.role+')';tab='dash';draw()}
-  catch(e){loginErr=ERR(e);await auth.signOut();loginView('phone',loginErr)}
+  try{const s=await db.collection('staff').doc(u.phoneNumber).get();
+    if(!s.exists){await auth.signOut();$('app').hidden=true;$('login').hidden=false;return loginView('phone','This number is not an admin or teacher.')}
+    ST={phone:u.phoneNumber,role:s.data().role,name:s.data().name||u.phoneNumber};
+    $('login').hidden=true;$('app').hidden=false;$('who').textContent=ST.name+' ('+ST.role+')';tab='dash';loadCats();draw()}
+  catch(e){await auth.signOut();loginView('phone',ERR(e))}
 }
 $('out').onclick=async()=>{await auth.signOut();ST=null;$('app').hidden=true;$('login').hidden=false;loginView('phone')};
-auth.onAuthStateChanged(u=>{if(u)start(u);else{loginView('phone',loginErr);loginErr=''}});
+auth.onAuthStateChanged(u=>{if(u)start(u);else loginView('phone')});
 
 /* ---- tabs ---- */
 function draw(){
-  const T=admin()?[['dash','Dashboard'],['courses','Courses'],['content','Content'],['students','Students']]:[['dash','My sales'],['courses','My courses']];
+  const T=admin()?[['dash','Dashboard'],['courses','Courses'],['tests','Tests'],['mats','Materials'],['doubts','Doubts'],['content','Content'],['students','Students']]:[['dash','My sales'],['courses','My courses'],['tests','Tests'],['mats','Materials'],['doubts','Doubts']];
   $('tabs').replaceChildren(...T.map(([k,l])=>h('button',{class:tab===k?'on':'',onclick:()=>{tab=k;msg='';draw()}},l)));
   $('view').replaceChildren(h('p',{},'Loading...'));
-  ({dash:vDash,courses:vCourses,content:vContent,students:vStudents}[tab])().then(n=>$('view').replaceChildren(...[n].flat(Infinity))).catch(e=>$('view').replaceChildren(h('div',{class:'err'},ERR(e))));
+  ({dash:vDash,courses:vCourses,content:vContent,students:vStudents,tests:vTests,mats:vMats,doubts:vDoubts}[tab])().then(n=>$('view').replaceChildren(...[n].flat(Infinity))).catch(e=>$('view').replaceChildren(h('div',{class:'err'},ERR(e))));
 }
-const myEnr=()=>admin()?g(db.collection('enrollments')):g(db.collection('enrollments').where('by','==',ST.id));
+const myEnr=()=>admin()?g(db.collection('enrollments')):g(db.collection('enrollments').where('by','==',ST.phone));
 const stat=(n,l)=>h('div',{class:'card'},h('b',{},n),h('small',{},l));
 
 async function vDash(){
-  const [en,co]=await Promise.all([myEnr(),admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.id))]);
+  const [en,co]=await Promise.all([myEnr(),admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.phone))]);
   const act=en.filter(e=>e.status==='active'),pen=en.filter(e=>e.status==='pending');
   const rev=act.reduce((s,e)=>s+(e.price||0),0);
   const cards=[stat(co.length,'Courses'),stat('₹'+rev,admin()?'Revenue':'Total sales'),stat(act.length,'Enrollments')];
-  if(admin()){const us=await db.collection('users').get();cards.unshift(stat(us.size,'Students'));cards.push(stat(pen.length,'Pending approvals'))}
+  if(admin()){const us=await db.collection('users').get();cards.unshift(stat(us.size,'Students'));cards.push(stat(pen.length,'Pending approvals'));const [tsn,atn,ddn]=await Promise.all([db.collection('tests').get(),db.collection('attempts').get(),db.collection('doubts').where('status','==','open').get()]);cards.push(stat(tsn.size,'Tests'),stat(atn.size,'Test attempts'),stat(ddn.size,'Open doubts'))}
   const out=[h('div',{class:'cards'},cards)];
-  if(admin()){out.push(h('h2',{},'Pending approvals'),pen.length?pen.map(e=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},e.name+' · ₹'+e.price),h('small',{},(e.email||e.phone)+' · ref: '+e.ref+' · '+e.date)),
-    h('button',{class:'b g',onclick:async()=>{await db.collection('enrollments').doc(e.id).update({status:'active'});draw()}},'Approve'),
+  if(admin()){out.push(h('h2',{},'Pending approvals'),pen.length?pen.map(e=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},e.name+' · ₹'+e.price),h('small',{},e.phone+' · ref: '+e.ref+' · '+e.date)),
+    h('button',{class:'b g',onclick:async()=>{const cs=await db.collection('courses').doc(e.cid).get(),v=(cs.exists&&cs.data().val)||0;await db.collection('enrollments').doc(e.id).update({status:'active',expMs:v?Date.now()+v*864e5:0});draw()}},'Approve'),
     h('button',{class:'b r',onclick:async()=>{await db.collection('enrollments').doc(e.id).delete();draw()}},'Reject'))):h('p',{style:'color:var(--light)'},'No pending approvals.'))}
   return out;
 }
@@ -105,51 +103,41 @@ async function vDash(){
 let draft=null;
 async function vCourses(){
   if(draft)return formView();
-  const co=await (admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.id)));
-  return [h('button',{class:'b',onclick:()=>{draft={t:'',cat:'Class 9-12',p:'',e:'📘',tg:{f:false,p:false,n:true},desc:'',notes:'',fd:[{n:'',ch:[{t:'',url:''}]}]};draw()}},'+ Add new course'),
+  const co=await (admin()?g(db.collection('courses')):g(db.collection('courses').where('by','==',ST.phone)));
+  return [h('button',{class:'b',onclick:()=>{draft={t:'',cat:CATN[0],p:'',mrp:'',val:'',lang:'Hindi',e:'📘',tg:{f:false,p:false,n:true},desc:'',notes:'',lec:[{t:'',url:''}]};draw()}},'+ Add new course'),
     msg?h('p',{style:'color:#16A34A;margin-top:10px'},msg):null,
-    co.length?co.map(c=>h('div',{class:'row'},h('span',{style:'font-size:26px'},c.e||'📘'),h('div',{class:'t'},h('b',{},c.t),h('small',{},c.cat+' · '+(c.p>0?'₹'+c.p:'Free')+' · '+c.n+' chapters')),
+    co.length?co.map(c=>h('div',{class:'row'},h('span',{style:'font-size:26px'},c.e||'📘'),h('div',{class:'t'},h('b',{},c.t),h('small',{},c.cat+' · '+(c.p>0?'₹'+c.p:'Free')+' · '+c.n+' lectures')),
       h('button',{class:'b r',onclick:async e=>{if(e.target.dataset.s!=='1'){e.target.dataset.s='1';e.target.textContent='Tap again';return}await delCourse(c.id);msg='Course deleted';draw()}},'Delete'))):h('p',{style:'margin-top:14px;color:var(--light)'},'No courses yet.')];
 }
 async function delCourse(id){const ls=await db.collection('courses').doc(id).collection('lectures').get();const b=db.batch();ls.forEach(d=>b.delete(d.ref));b.delete(db.collection('courses').doc(id));await b.commit()}
 function formView(){
   const d=draft,f=(l,el)=>h('div',{},h('label',{},l),el),err=h('div',{class:'err'});
-  const CATS=['Class 9-12','JEE','NEET','SSC','Banking'];
+  const CATS=CATN;
   return h('div',{class:'box'},h('h2',{},'New course'),
     f('Course title *',h('input',{value:d.t,oninput:e=>d.t=e.target.value})),
     h('div',{class:'two'},f('Category',h('select',{onchange:e=>d.cat=e.target.value},CATS.map(o=>h('option',{...(d.cat===o?{selected:''}:{})},o)))),f('Price in ₹ (0 = free)',h('input',{type:'number',min:'0',value:d.p,oninput:e=>d.p=e.target.value}))),
     h('div',{class:'two'},f('Icon (emoji)',h('input',{value:d.e,maxlength:'2',oninput:e=>d.e=e.target.value})),f('Notes PDF link (optional)',h('input',{value:d.notes,placeholder:'https://...',oninput:e=>d.notes=e.target.value}))),
-    admin()?h('div',{style:'margin-top:10px'},[['f','Featured'],['p','Popular'],['n','New']].map(([k,l])=>h('label',{style:'display:inline-block;margin-right:14px;font-size:14px;color:var(--text)'},h('input',{type:'checkbox',style:'width:auto;margin-right:6px',...(d.tg[k]?{checked:''}:{}),onchange:e=>d.tg[k]=e.target.checked}),l))):null,
+    h('div',{class:'two'},f('Original price ₹ (optional, shown struck-through)',h('input',{type:'number',min:'0',value:d.mrp,oninput:e=>d.mrp=e.target.value})),f('Validity in days (0 = lifetime)',h('input',{type:'number',min:'0',value:d.val,oninput:e=>d.val=e.target.value}))),f('Language',h('input',{value:d.lang,oninput:e=>d.lang=e.target.value})),admin()?h('div',{style:'margin-top:10px'},[['f','Featured'],['p','Popular'],['n','New']].map(([k,l])=>h('label',{style:'display:inline-block;margin-right:14px;font-size:14px;color:var(--text)'},h('input',{type:'checkbox',style:'width:auto;margin-right:6px',...(d.tg[k]?{checked:''}:{}),onchange:e=>d.tg[k]=e.target.checked}),l))):null,
     f('Description',h('textarea',{rows:'3',oninput:e=>d.desc=e.target.value},d.desc)),
-    h('h2',{style:'margin-top:16px'},'Content: folders and chapters'),
-    h('small',{style:'color:var(--light)'},'Each folder holds chapters (video or PDF links). The first chapter is a free preview.'),
-    d.fd.map((fo,fi)=>h('div',{style:'margin-top:12px;border:1px solid rgba(128,128,128,.4);padding:10px;border-radius:12px'},
-      h('div',{class:'two'},h('input',{placeholder:'Folder '+(fi+1)+' name (e.g. Maths by Sir)',value:fo.n,oninput:e=>fo.n=e.target.value}),
-        d.fd.length>1?h('button',{class:'b r',onclick:()=>{d.fd.splice(fi,1);draw()}},'Remove folder'):h('span')),
-      fo.ch.map((l,i)=>h('div',{class:'two',style:'margin-top:8px'},h('input',{placeholder:'Chapter '+(i+1)+' title',value:l.t,oninput:e=>l.t=e.target.value}),h('input',{placeholder:'Video / PDF link https://...',value:l.url,oninput:e=>l.url=e.target.value}))),
-      h('button',{class:'b o',style:'margin-top:8px',onclick:()=>{fo.ch.push({t:'',url:''});draw()}},'+ Add chapter'))),
-    h('button',{class:'b o',style:'margin-top:10px',onclick:()=>{d.fd.push({n:'',ch:[{t:'',url:''}]});draw()}},'+ Add folder'),err,
+    h('h2',{style:'margin-top:16px'},'Lectures (first one is a free preview)'),
+    d.lec.map((l,i)=>h('div',{class:'two',style:'margin-top:8px'},h('input',{placeholder:'Lecture '+(i+1)+' title',value:l.t,oninput:e=>l.t=e.target.value}),h('input',{placeholder:'YouTube/video link https://...',value:l.url,oninput:e=>l.url=e.target.value}))),
+    h('button',{class:'b o',style:'margin-top:10px',onclick:()=>{d.lec.push({t:'',url:''});draw()}},'+ Add lecture'),err,
     h('div',{style:'margin-top:16px;display:flex;gap:10px'},h('button',{class:'b g',onclick:async e=>{
       const ok=u=>/^https?:\/\/\S+$/.test(u.trim());
       if(d.t.trim().length<3)return err.textContent='Enter a course title';
       if(d.p!==''&&(isNaN(+d.p)||+d.p<0))return err.textContent='Price must be 0 or more';
       if(d.notes.trim()&&!ok(d.notes))return err.textContent='Notes link must start with https://';
-      d.fd.forEach(fo=>{fo.ch=fo.ch.filter(l=>l.t.trim()||l.url.trim())});d.fd=d.fd.filter(fo=>fo.n.trim()||fo.ch.length);
-      if(!d.fd.length)return err.textContent='Add at least one folder with a chapter';
-      if(d.fd.some(fo=>!fo.n.trim()))return err.textContent='Every folder needs a name';
-      if(new Set(d.fd.map(fo=>fo.n.trim())).size<d.fd.length)return err.textContent='Folder names must be different';
-      if(d.fd.some(fo=>!fo.ch.length))return err.textContent='Every folder needs at least one chapter';
-      if(d.fd.some(fo=>fo.ch.some(l=>!l.t.trim()||!ok(l.url))))return err.textContent='Every chapter needs a title and a valid link';
+      if(d.lec.some(l=>!l.t.trim()||!ok(l.url)))return err.textContent='Every lecture needs a title and a valid link';
       e.target.disabled=true;
       try{const ref=db.collection('courses').doc(),b=db.batch();
-        b.set(ref,{t:d.t.trim(),cat:d.cat,te:ST.name,p:Math.round(+d.p||0),e:d.e||'📘',tg:Object.keys(d.tg).filter(k=>d.tg[k]).join(''),n:d.fd.reduce((t,fo)=>t+fo.ch.length,0),fl:d.fd.map(fo=>({n:fo.n.trim(),c:fo.ch.length})),notes:d.notes.trim(),desc:d.desc.trim(),by:ST.id,ts:TS()});
-        let o=0;d.fd.forEach((fo,fi)=>fo.ch.forEach(l=>{b.set(ref.collection('lectures').doc(),{t:l.t.trim(),url:l.url.trim(),f:fo.n.trim(),fo:fi,o:o,free:o===0});o++}));
+        b.set(ref,{t:d.t.trim(),cat:d.cat,te:ST.name,p:Math.round(+d.p||0),mrp:Math.round(+d.mrp||0),val:Math.round(+d.val||0),lang:(d.lang||'').trim(),e:d.e||'📘',tg:Object.keys(d.tg).filter(k=>d.tg[k]).join(''),n:d.lec.length,notes:d.notes.trim(),desc:d.desc.trim(),by:ST.phone,ts:TS()});
+        d.lec.forEach((l,i)=>b.set(ref.collection('lectures').doc(),{t:l.t.trim(),url:l.url.trim(),o:i,free:i===0}));
         await b.commit();draft=null;msg='Course published!';draw()}catch(x){err.textContent=ERR(x);e.target.disabled=false}}},'Publish course'),
       h('button',{class:'b o',onclick:()=>{draft=null;draw()}},'Cancel')));
 }
 
 /* ---- banners / notices / teachers / demo classes (admin) ---- */
-const CT={banners:['Banners',[['t','Title'],['s','Subtitle'],['g','Colors (e.g. #1E3A8A,#F97316)']]],notices:['Notices',[['t','Title'],['b','Message']]],
+const CT={categories:['Exam categories',[['n','Category name (e.g. SSC CGL, UP Police)']]],banners:['Banners',[['t','Title'],['s','Subtitle'],['g','Colors (e.g. #1E3A8A,#F97316)']]],notices:['Notices',[['t','Title'],['b','Message']]],
   teachers:['Teachers',[['n','Name'],['s','Subject'],['e','Emoji']]],demos:['Demo classes',[['t','Title'],['when','When (e.g. Sat 6 PM)'],['url','Class link https://...']]]};
 let ct='banners';
 async function vContent(){
@@ -166,9 +154,99 @@ async function vContent(){
 }
 async function vStudents(){
   const us=await g(db.collection('users'));
-  return [h('h2',{},'Students ('+us.length+')'),us.length?us.map(u=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},u.name),h('small',{},(u.email||'')+(u.phone?' · '+u.phone:'')+' · '+u.cls+' · '+u.city)),
-    h('button',{class:'b r',onclick:async()=>{if(!confirm('Unlock device of '+u.name+'? Their phone can then be used with another account.'))return;
-      try{const q=await db.collection('devices').where('uid','==',u.id).get();await Promise.all(q.docs.map(d=>d.ref.delete()));alert('Device unlocked ('+q.size+')')}catch(e){alert(ERR(e))}}},'Unlock device'))):h('p',{style:'color:var(--light)'},'No students yet.')];
+  return [h('h2',{},'Students ('+us.length+')'),us.length?us.map(u=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},u.name),h('small',{},u.phone+' · '+u.cls+' · '+u.city)))):h('p',{style:'color:var(--light)'},'No students yet.')];
+}
+</script>
+<script>
+/* ===== PHASE 2: exam categories, tests, study material, doubts ===== */
+let CATN=['Class 9-12','JEE','NEET','SSC','Banking'],CO=[];
+async function loadCats(){try{const c=await g(db.collection('categories'));if(c.length)CATN=c.map(x=>x.n)}catch(e){}}
+const myCourses=()=>g(admin()?db.collection('courses'):db.collection('courses').where('by','==',ST.phone));
+const mineQ=c=>admin()?db.collection(c):db.collection(c).where('by','==',ST.phone);
+const two=(a,b)=>h('div',{class:'two'},a,b);
+const fld=(l,el)=>h('div',{},h('label',{},l),el);
+const sel=(opts,cur,fn)=>h('select',{onchange:e=>fn(e.target.value)},opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return h('option',{value:v,...(cur===v?{selected:''}:{})},l)}));
+const twice=(btn)=>async e=>{if(e.target.dataset.s!=='1'){e.target.dataset.s='1';e.target.textContent='Tap again';return}await btn()};
+
+/* ---- tests ---- */
+let td=null,tmsg='';
+async function vTests(){
+  const [ts,co]=await Promise.all([g(mineQ('tests')),myCourses()]);CO=co;
+  if(td)return tForm();
+  return [h('button',{class:'b',onclick:()=>{td={t:'',cat:CATN[0],cid:'',dur:'60',pos:'1',neg:'0.25',pub:true,txt:''};tmsg='';draw()}},'+ Create test'),tmsg?h('p',{style:'color:#16A34A;margin-top:10px'},tmsg):null,
+    ts.length?ts.map(x=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},x.t),h('small',{},x.cat+' · '+x.n+' questions · '+x.dur+' min · '+(x.pub?'Published':'Draft'))),
+      h('button',{class:'b o',onclick:async()=>{await db.collection('tests').doc(x.id).update({pub:!x.pub});draw()}},x.pub?'Unpublish':'Publish'),
+      h('button',{class:'b r',onclick:twice(async()=>{await delTest(x.id);tmsg='Test deleted';draw()})},'Delete'))):h('p',{style:'margin-top:14px;color:var(--light)'},'No tests yet.')];
+}
+async function delTest(id){const r=db.collection('tests').doc(id),[q,k]=await Promise.all([r.collection('questions').get(),r.collection('keys').get()]),b=db.batch();q.forEach(d=>b.delete(d.ref));k.forEach(d=>b.delete(d.ref));b.delete(r);await b.commit()}
+function parseQs(txt){const out=[];txt.split(/\n\s*\n/).forEach(blk=>{blk=blk.trim();if(!blk)return;const q={o:[],s:'General',ex:''};
+  blk.split('\n').forEach(l=>{l=l.trim();let m;
+    if(m=l.match(/^Q[:.)]\s*(.+)/i))q.q=m[1];
+    else if(m=l.match(/^([A-D])[).:]\s*(.+)/i))q.o['ABCD'.indexOf(m[1].toUpperCase())]=m[2];
+    else if(m=l.match(/^Ans(?:wer)?[:.]?\s*([A-D])/i))q.a='ABCD'.indexOf(m[1].toUpperCase());
+    else if(m=l.match(/^Exp(?:lanation)?[:.]\s*(.+)/i))q.ex=m[1];
+    else if(m=l.match(/^Sub(?:ject)?[:.]\s*(.+)/i))q.s=m[1]});
+  out.push(q)});return out}
+function tForm(){
+  const d=td,err=h('div',{class:'err'});
+  return h('div',{class:'box'},h('h2',{},'Create test'),
+    fld('Test title *',h('input',{value:d.t,oninput:e=>d.t=e.target.value})),
+    two(fld('Exam category',sel(CATN,d.cat,v=>d.cat=v)),fld('Who can attempt',sel([['','Free for all students'],...CO.map(c=>[c.id,'Only: '+c.t])],d.cid,v=>d.cid=v))),
+    two(fld('Duration (minutes)',h('input',{type:'number',min:'1',value:d.dur,oninput:e=>d.dur=e.target.value})),fld('Marks per correct answer',h('input',{type:'number',step:'0.25',min:'0',value:d.pos,oninput:e=>d.pos=e.target.value}))),
+    fld('Negative marks per wrong answer',h('input',{type:'number',step:'0.25',min:'0',value:d.neg,oninput:e=>d.neg=e.target.value})),
+    h('label',{},'Questions - paste in this format (blank line between questions)'),
+    h('pre',{style:'font-size:12px;background:var(--bg);padding:8px;border-radius:8px;margin-bottom:6px;white-space:pre-wrap'},'Q: What is 2 + 2?\nA) 3\nB) 4\nC) 5\nD) 6\nAns: B\nExp: Basic addition (optional)\nSub: Maths (optional)'),
+    h('textarea',{rows:'14',oninput:e=>d.txt=e.target.value},d.txt),
+    h('label',{style:'font-size:14px;color:var(--text)'},h('input',{type:'checkbox',style:'width:auto;margin-right:6px',...(d.pub?{checked:''}:{}),onchange:e=>d.pub=e.target.checked}),'Publish immediately'),err,
+    h('div',{style:'margin-top:14px;display:flex;gap:10px'},h('button',{class:'b g',onclick:async e=>{
+      if(d.t.trim().length<3)return err.textContent='Enter a test title';
+      if(!(+d.dur>0)||isNaN(+d.pos)||isNaN(+d.neg)||+d.pos<0||+d.neg<0)return err.textContent='Check duration and marks';
+      const qs=parseQs(d.txt);if(!qs.length)return err.textContent='Add at least one question';if(qs.length>200)return err.textContent='Maximum 200 questions per test';
+      for(let i=0;i<qs.length;i++){const q=qs[i];if(!q.q||[0,1,2,3].some(j=>!q.o[j])||![0,1,2,3].includes(q.a))return err.textContent='Question '+(i+1)+' is incomplete: it needs Q:, options A to D and Ans:'}
+      e.target.disabled=true;
+      try{const r=db.collection('tests').doc(),b=db.batch();
+        b.set(r,{t:d.t.trim(),cat:d.cat,cid:d.cid||'',dur:Math.round(+d.dur),pos:+d.pos,neg:+d.neg,n:qs.length,pub:!!d.pub,by:ST.phone,ts:TS()});
+        qs.forEach((q,i)=>{const qr=r.collection('questions').doc();b.set(qr,{q:q.q,o:q.o,s:q.s,order:i});b.set(r.collection('keys').doc(qr.id),{a:q.a,ex:q.ex})});
+        await b.commit();td=null;tmsg='Test saved with '+qs.length+' questions';draw()}catch(x){err.textContent=ERR(x);e.target.disabled=false}}},'Save test'),
+      h('button',{class:'b o',onclick:()=>{td=null;draw()}},'Cancel')));
+}
+
+/* ---- study material ---- */
+let mmsg='';
+async function vMats(){
+  const [ms,co]=await Promise.all([g(mineQ('materials')),myCourses()]);
+  const TY=['Notes','PYQ','Practice','Revision','Answer key','Important'],v={t:'',type:'Notes',cat:'',cid:'',url:''},err=h('div',{class:'err'});
+  return [h('div',{class:'box'},h('h2',{},'Add study material'),
+    fld('Title *',h('input',{oninput:e=>v.t=e.target.value})),
+    two(fld('Type',sel(TY,v.type,x=>v.type=x)),fld('Exam category',sel([['','-'],...CATN],v.cat,x=>v.cat=x))),
+    fld('Who can open it',sel([['','Free for all students'],...co.map(c=>[c.id,'Only: '+c.t])],v.cid,x=>v.cid=x)),
+    fld('PDF / file link * (https://...)',h('input',{placeholder:'Google Drive or any public link',oninput:e=>v.url=e.target.value})),err,
+    h('button',{class:'b',style:'margin-top:12px',onclick:async()=>{if(v.t.trim().length<2)return err.textContent='Enter a title';if(!/^https?:\/\/\S+$/.test(v.url.trim()))return err.textContent='Enter a valid link starting with https://';
+      try{await db.collection('materials').add({t:v.t.trim(),type:v.type,cat:v.cat,cid:v.cid,url:v.url.trim(),by:ST.phone,ts:TS()});mmsg='Material added';draw()}catch(x){err.textContent=ERR(x)}}},'Add material')),
+    mmsg?h('p',{style:'color:#16A34A;margin-top:10px'},mmsg):null,
+    h('h2',{style:'margin-top:18px'},'Added ('+ms.length+')'),
+    ms.map(m=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},m.t),h('small',{},m.type+(m.cat?' · '+m.cat:'')+' · '+(m.cid?'Course only':'Free'))),
+      h('button',{class:'b r',onclick:async()=>{mmsg='';await db.collection('materials').doc(m.id).delete();draw()}},'Delete')))];
+}
+
+/* ---- doubts ---- */
+let dsel=null,dflt='open';
+const srt=(a,b)=>(b.ts?b.ts.seconds:9e9)-(a.ts?a.ts.seconds:9e9);
+async function vDoubts(){
+  if(dsel)return dDetail(dsel);
+  const all=(await g(db.collection('doubts'))).sort(srt).filter(d=>dflt==='all'||d.status===dflt);
+  return [h('div',{style:'display:flex;gap:8px;margin-bottom:12px'},[['open','Open'],['resolved','Resolved'],['all','All']].map(([k,l])=>h('button',{class:'b '+(dflt===k?'':'o'),onclick:()=>{dflt=k;draw()}},l))),
+    all.length?all.map(d=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},d.q.slice(0,80)),h('small',{},d.name+' · '+d.subject+' · '+(d.status==='resolved'?'Resolved':d.sr?'Answered':'Waiting'))),h('button',{class:'b',onclick:()=>{dsel=d.id;draw()}},'Open'))):h('p',{style:'color:var(--light)'},'No doubts here.')];
+}
+async function dDetail(id){
+  const dr=db.collection('doubts').doc(id),[ds,rs]=await Promise.all([dr.get(),dr.collection('replies').get()]),d=ds.data();
+  const reps=rs.docs.map(x=>x.data()).sort((a,b)=>-srt(a,b)),ta=h('textarea',{rows:'3',placeholder:'Write your answer...'});
+  return [h('button',{class:'b o',onclick:()=>{dsel=null;draw()}},'← Back'),
+    h('div',{class:'box',style:'margin-top:12px'},h('b',{},d.name+' · '+d.subject),h('p',{style:'margin:8px 0;white-space:pre-wrap'},d.q),d.img?h('img',{src:d.img,style:'max-width:100%;border-radius:8px'}):null),
+    reps.map(r=>h('div',{class:'row'},h('div',{class:'t'},h('b',{},(r.staff?'👨‍🏫 ':'🎓 ')+r.name),h('small',{style:'white-space:pre-wrap;color:var(--text)'},r.text)))),
+    h('div',{class:'box',style:'margin-top:12px'},ta,
+      h('button',{class:'b',style:'margin-top:10px',onclick:async()=>{const x=ta.value.trim();if(x.length<2)return;await dr.collection('replies').add({uid:auth.currentUser.uid,name:ST.name,staff:true,text:x,ts:TS()});await dr.update({sr:firebase.firestore.FieldValue.increment(1)});draw()}},'Send answer'),
+      h('button',{class:'b g',style:'margin:10px 0 0 8px',onclick:async()=>{await dr.update({status:d.status==='resolved'?'open':'resolved'});draw()}},d.status==='resolved'?'Reopen':'Mark resolved'))];
 }
 </script>
 </body>

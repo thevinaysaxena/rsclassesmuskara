@@ -1,0 +1,43 @@
+RS CLASSES MUSKARA - PHASE 2 UPDATE (Test Series, Doubts, Study Material, Categories, Validity)
+Aapka Firebase config files mein pehle se bhara hua hai. Purana data (courses, staff, users) waisa hi rahega.
+
+KAAM 1: Naye rules lagao (zaroori - iske bina naye features "Not allowed" denge)
+  Firebase console > Firestore Database > Rules tab > purana sab hatao >
+  is folder ki "firestore.rules" ka poora text paste karo > Publish.
+
+KAAM 2: Purani files badlo
+  Is zip ki index.html, admin.html, firestore.rules, firebase.json purane folder mein replace kar do.
+  Chalane ke liye:  python -m http.server 8000
+     Admin : http://localhost:8000/admin.html      Student : http://localhost:8000/
+  Live karne ke liye:  firebase deploy
+
+KAAM 3: Admin panel mein pehli baar ye karo
+  1. Content > "Exam categories" > apni categories jodo (jaise SSC CGL, UP Police, NEET, Class 10...).
+     Ye student app ke chips mein aur course/test form mein dikhengi.
+  2. Courses > "Add new course": ab Original price, Validity (days) aur Language bhi bhar sakte ho.
+  3. Tests > "Create test": title, category, time, marks bharo aur sawal is format mein paste karo
+     (har sawal ke beech mein ek khaali line):
+         Q: 2 + 2 kitne hote hain?
+         A) 3
+         B) 4
+         C) 5
+         D) 6
+         Ans: B
+         Exp: Simple jod (optional)
+         Sub: Maths (optional)
+  4. Materials: PDF ka link (Google Drive etc.) jodo - free ya kisi course ke liye.
+  5. Doubts: students ke doubts yahan aate hain; jawab do aur "Mark resolved" dabao.
+
+JO NAYA HAI
+  Student app : Home par Test Series / Doubts / Study Material ke tiles, Continue learning, Recent results;
+                timer wala test (negative marking, mark for review, auto-submit), rank + percentile +
+                subject-wise analysis + explanations; doubts (photo ke saath) aur teacher ke jawab;
+                Downloads mein search aur type filter; MRP/discount aur validity.
+  Admin panel : Tests, Materials, Doubts, Exam categories, dashboard mein tests/attempts/open doubts.
+
+DHYAN RAKHEN (sachchai)
+  - Test ka score student ke phone par nikalta hai. Answer key submit karne ke baad hi khulti hai,
+    lekin ek technical student score badal sakta hai. Pakka server-side grading ke liye Blaze plan + Cloud Functions chahiye.
+  - Teacher abhi saare doubts dekh sakta hai (batches ka module abhi nahi bana).
+  - Abhi nahi bana: Batches, Live classes, Attendance, Razorpay auto-payment, Push notification,
+    Secure video, AI assistant.

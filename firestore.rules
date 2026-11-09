@@ -1,59 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
-    function si() { return request.auth != null && request.auth.token.email_verified == true; }
-    function em() { return request.auth.token.email.lower(); }
-    function staff() { return si() && exists(/databases/$(db)/documents/staff/$(em())); }
-    function admin() { return staff() && get(/databases/$(db)/documents/staff/$(em())).data.role == 'admin'; }
+    function si() { return request.auth != null; }
+    function ph() { return request.auth.token.phone_number; }
+    function staff() { return si() && exists(/databases/$(db)/documents/staff/$(ph())); }
+    function admin() { return staff() && get(/databases/$(db)/documents/staff/$(ph())).data.role == 'admin'; }
     function course(c) { return get(/databases/$(db)/documents/courses/$(c)); }
+    function test(t) { return get(/databases/$(db)/documents/tests/$(t)); }
+    // Course access = enrollment is active AND not expired (expMs 0 = lifetime)
     function activeEnr(c) {
+      let e = get(/databases/$(db)/documents/enrollments/$(request.auth.uid + '_' + c)).data;
       return exists(/databases/$(db)/documents/enrollments/$(request.auth.uid + '_' + c))
-        && get(/databases/$(db)/documents/enrollments/$(request.auth.uid + '_' + c)).data.status == 'active';
+        && e.status == 'active' && (e.get('expMs', 0) == 0 || e.get('expMs', 0) > request.time.toMillis());
     }
 
-    // Staff list: add admins/teachers by hand in the Firebase console. Doc id = admin/teacher Google email in lowercase, e.g. name@gmail.com
+    // Staff list: add admins/teachers by hand in the Firebase console. Doc id = +91XXXXXXXXXX
     match /staff/{p} {
-      allow read: if si() && (em() == p || admin());
+      allow read: if si() && (ph() == p || admin());
       allow write: if admin();
     }
     match /users/{uid} {
       allow read: if si() && (request.auth.uid == uid || admin());
       allow create, update: if si() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name','cls','city','photo','phone','email','createdAt'])
-        && request.resource.data.email == em()
-        && request.resource.data.phone is string
-        && (request.resource.data.phone == '' || request.resource.data.phone.matches('[6-9][0-9]{9}'))
+        && request.resource.data.keys().hasOnly(['name','cls','city','photo','phone','createdAt'])
+        && request.resource.data.phone == ph()
         && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
         && request.resource.data.city is string && request.resource.data.city.size() > 0;
       allow delete: if admin();
     }
-    // One device = one account. Doc id = random device id made by the app.
-    match /devices/{did} {
-      allow get: if si();
-      allow list: if admin();
-      allow create: if si() && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid','email','ts'])
-        && request.resource.data.email == em();
-      allow delete: if admin();
-    }
     match /{coll}/{id} {
-      allow read: if si() && coll in ['banners','teachers','demos','notices'];
-      allow write: if admin() && coll in ['banners','teachers','demos','notices'];
+      allow read: if si() && coll in ['banners','teachers','demos','notices','categories'];
+      allow write: if admin() && coll in ['banners','teachers','demos','notices','categories'];
     }
     match /courses/{cid} {
       allow read: if si();
-      allow create: if staff() && request.resource.data.by == em();
-      allow update, delete: if admin() || (staff() && resource.data.by == em());
+      allow create: if staff() && request.resource.data.by == ph();
+      allow update, delete: if admin() || (staff() && resource.data.by == ph());
       match /lectures/{lid} {
         allow read: if staff() || resource.data.free == true || activeEnr(cid);
-        allow write: if admin() || (staff() && course(cid).data.by == em());
+        allow write: if admin() || (staff() && course(cid).data.by == ph());
       }
     }
     match /enrollments/{id} {
-      allow read: if si() && (resource.data.uid == request.auth.uid || admin() || (staff() && resource.data.by == em()));
+      allow read: if si() && (resource.data.uid == request.auth.uid || admin() || (staff() && resource.data.by == ph()));
       allow create: if si() && request.resource.data.uid == request.auth.uid
         && id == request.auth.uid + '_' + request.resource.data.cid
-        && request.resource.data.keys().hasOnly(['uid','cid','status','done','ref','price','by','name','phone','email','date','ts'])
+        && request.resource.data.keys().hasOnly(['uid','cid','status','done','ref','price','by','name','phone','date','ts','expMs'])
         && request.resource.data.done == 0
         && request.resource.data.price == course(request.resource.data.cid).data.p
         && request.resource.data.by == course(request.resource.data.cid).data.by
@@ -64,6 +56,57 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done'])
             && request.resource.data.done == resource.data.done + 1);
       allow delete: if admin();
+    }
+
+    // ---- Test series ----
+    match /tests/{tid} {
+      allow read: if si() && (resource.data.pub == true || staff());
+      allow create: if staff() && request.resource.data.by == ph();
+      allow update, delete: if admin() || (staff() && resource.data.by == ph());
+      match /questions/{qid} {
+        allow read: if si() && (staff() || test(tid).data.pub == true);
+        allow write: if admin() || (staff() && getAfter(/databases/$(db)/documents/tests/$(tid)).data.by == ph());
+      }
+      // Answer keys: students can read them only after they have submitted their attempt
+      match /keys/{qid} {
+        allow read: if staff() || exists(/databases/$(db)/documents/attempts/$(request.auth.uid + '_' + tid));
+        allow write: if admin() || (staff() && getAfter(/databases/$(db)/documents/tests/$(tid)).data.by == ph());
+      }
+    }
+    match /attempts/{id} {
+      allow read: if si();
+      allow create: if si() && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.tid
+        && request.resource.data.keys().hasOnly(['uid','tid','name','answers','ts'])
+        && test(request.resource.data.tid).data.pub == true
+        && (test(request.resource.data.tid).data.cid == '' || activeEnr(test(request.resource.data.tid).data.cid));
+      allow update: if si() && resource.data.uid == request.auth.uid && !('score' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['score','correct','wrong','skipped','subj']);
+    }
+
+    // ---- Doubts ----
+    match /doubts/{did} {
+      allow read: if si() && (resource.data.uid == request.auth.uid || staff());
+      allow create: if si() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','name','subject','q','img','status','ts','sr'])
+        && request.resource.data.status == 'open' && request.resource.data.sr == 0
+        && request.resource.data.q.size() >= 5 && request.resource.data.q.size() <= 2000;
+      allow update: if staff()
+        || (si() && resource.data.uid == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+      match /replies/{rid} {
+        allow read: if si() && (get(/databases/$(db)/documents/doubts/$(did)).data.uid == request.auth.uid || staff());
+        allow create: if si() && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid','name','staff','text','ts'])
+          && ((request.resource.data.staff == true && staff())
+              || (request.resource.data.staff == false && get(/databases/$(db)/documents/doubts/$(did)).data.uid == request.auth.uid));
+      }
+    }
+
+    // ---- Study material ----
+    match /materials/{id} {
+      allow read: if si() && (staff() || resource.data.cid == '' || activeEnr(resource.data.cid));
+      allow create: if staff() && request.resource.data.by == ph();
+      allow update, delete: if admin() || (staff() && resource.data.by == ph());
     }
   }
 }
